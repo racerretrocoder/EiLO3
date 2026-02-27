@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<!-- saved from url=(0061)http://server1.pavillyandproliant.42web.io:11050/sysinfo.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EiLO 3 Remote Management</title>
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #e0e0e0; 
+            color: #333;
+        }
+
+        .container {
+            width: 98%;
+            height: 90%;
+            margin: 20px;
+            padding: 10px;
+            background: #fff;
+            border: 5px solid #ccc;
+        }
+
+        .containerae {
+            width: 98%;
+            height: auto;
+            margin: 20px;
+            padding: 10px;
+            background: #fff;
+            border: 5px solid #ccc;
+            text-align: center;
+        }
+
+        .header {
+            background: linear-gradient(to bottom, #004080, #003366); 
+            padding: 20px;
+            text-align: left;
+            color: white;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            margin-top: -200px; /* as an example */
+            text-align: center;
+            width: auto;
+            height: auto;
+        }
+        img {
+             max-width: 80%;
+            max-height: 80%;
+            text-align: right;
+        }
+
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #003366;
+        }
+
+        .footer {
+            height: 99%;
+            text-align: right;
+            padding: 20px;
+            background: #f0f0f0;
+            border-top: 1px solid #ccc;
+            margin-top: 20px;
+        }
+         /* The sidebar menu */
+.sidenav {
+  height: 100%; /* Full-height: remove this if you want "auto" height */
+  width: 160px; /* Set the width of the sidebar */
+  position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+  z-index: 0; /* Stay on top */
+  top: 0; /* Stay at the top */
+  left: 0;
+  background-color: #f0f0f0; /* Black */
+  overflow-x: hidden; /* Disable horizontal scroll */
+  padding-top: 20px;
+}
+
+/* The navigation menu links */
+.sidenav a {
+  padding: 6px 8px 6px 16px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #818181;
+  display: block;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+/* Style page content */
+.main {
+  margin-left: 160px; /* Same as the width of the sidebar */
+  padding: 0px 10px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+} 
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>EiLO 3 Remote Management</h1>
+            <p id="psate"></p>
+            <button onclick="powermomentary();">Power Momentary</button>
+            <button onclick="powerhold();">Power Hold</button>
+            <button onclick="powercold();">Power Cold Boot</button>
+            <button onclick="powerreset();">Power Reset</button>
+        </header><br>
+
+
+
+
+<div class="containerae">
+  <a href="/mainpage.html">Overview</a>
+  <a href="/sysinfo.html">System Information</a>
+  <a href="/log.html">EiLO Event Log</a>
+  <a href="/diag.html">Diagnostics and Troubleshooting</a>
+  <a href="/config.html">Configuration</a>
+  <a href="/sysinfo.html">|</a>
+  <a href="/signout">Sign Out</a>
+  <br>
+  <button onclick="users();">User Administration</button><button onclick="access();">Access Settings</button><button onclick="security();">Security</button><button onclick="media();">Virtual Media</button><button onclick="advanced();">Advanced</button>
+</div>
+<h1 id="row1">Configuration</h1><br>
+<p id="wait"></p>
+
+<center><iframe id="configae" src="pickanop.html" title="Configuration iframe" style="height:600px;width:1200px;"></iframe></center>
+<br><br><br><br>
+        <div class="content">
+<br>
+<br>
+<!--
+<img src="tempscr.png" alt="Screenshot">
+--><br><br><br><br>
+        </div>
+
+        <footer class="footer">
+            <button onclick="powermomentary();">Power Momentary</button>
+            <button onclick="powerhold();">Power Hold</button>
+            <button onclick="powercold();">Power Cold Boot</button>
+            <button onclick="powerreset();">Power Reset</button>
+        </footer>
+    </div>
+
+    <script>
+
+// update overview information
+
+        function users() {
+            document.getElementById('configae').src="userconfig.html";
+        }
+
+        function access() {
+            document.getElementById('configae').src="/accessconfig.html";
+        }
+
+        function security() {
+            document.getElementById('configae').src="/securityconfig.html";
+        }
+        function media() {
+            document.getElementById('configae').src="/mediaconfig.html";
+        }
+        function advanced() {
+            document.getElementById('configae').src="/advancedconfig.html";
+        }
+
+        function powermomentary() {
+            alert("Are you sure you want to press the power button momentarily? (Refresh to cancel)")
+            fetch("/powermomentary").then(function(response) {
+                return response.text(); 
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+        }
+
+        function powerhold() {
+            alert("Are you sure you want to hold down the power button? (Refresh to cancel)")
+            fetch("/powerhold").then(function(response) {
+                return response.text();
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+        }
+
+        function powercold() {
+            alert("Are you sure you want to cold boot the system? (Refresh to cancel)")
+            fetch("/powercold").then(function(response) {
+                return response.text();  
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+        }
+
+        function powerreset() {
+            alert("Are you sure you want to reset the system? (Refresh to cancel)")
+            fetch("/powerreset").then(function(response) {
+                return response.text();  
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+        }
+
+function fetchpowerstate() {
+fetch("/powerstate")
+    .then(response => response.text())
+    .then(data => pstate(data))
+    .catch(error => document.getElementById("wait").innerHTML = error);
+        function pstate(data) {
+            document.getElementById("psate").innerHTML = "Power state: " + data + ""; 
+        }
+
+}
+fetchpowerstate();
+        // auto update
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+const autoupdate = async () => {
+  await delay(5000);
+  fetchpowerstate();
+  console.log("Auto Updated")
+  autoupdate()
+}
+autoupdate()
+
+
+    </script>
+
+
+</body></html>

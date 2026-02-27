@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Externally Integrated Lights Out 3</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>EiLO 3 Remote Management</h1>
+
+        </header>
+
+        <div class="content">
+            <h1 id="pcname"></h1>
+            <br><br><br><br><br>
+            <center>
+            <a href="./login.html">
+
+    <button class="btn">Login</button>
+</a></center>
+
+        </div>
+
+        <footer class="footer">
+            <p>Externally Integrated Lights-Out Version 3.0 Build 190</p>
+        </footer>
+    </div>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #e0e0e0;  
+    color: #333;
+}
+
+.container {
+    width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccc;
+}
+
+.header {
+    background: linear-gradient(to bottom, #004080, #003366); 
+    padding: 20px;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+}
+
+.content {
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #666;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+button.btn {
+    padding: 10px 20px;
+    margin: 10px;
+    background: #004080;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: 16px;
+}
+button.btn:hover {
+    background: #003366;
+}
+.footer {
+    text-align: center;
+    padding: 20px;
+    background: #f0f0f0;
+    border-top: 1px solid #ccc;
+    margin-top: 20px;
+}
+</style>
+<script>
+function fetchpowerstate() {
+fetch("/smallinfo")
+    .then(response => response.text())
+    .then(data => pstate(data))
+    .catch(error => document.getElementById("wait").innerHTML = error);
+        function pstate(data) {
+            document.getElementById("pcname").innerHTML = "Lights-Out Remote Management Web Interface<br><br>" + data + ""; 
+        }
+
+}
+fetchpowerstate();
+</script>
+</body>
+</html>

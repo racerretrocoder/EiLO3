@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+      button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+h4, h3 {
+    display: inline;
+}
+        button:hover {
+            background: #003366;
+        }
+
+        .ae {
+            position: relative;
+            top:  0px;
+            left: 0px;
+        } 
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #666;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+input[type="text"], input[type="password"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #666;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+
+
+
+
+        form input[type="submit"] {
+            padding: 10px 20px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        form input[type="submit"]:hover {
+            background: #003366;
+        }
+
+        </style>
+    </head>
+    <body>
+        <p hidden id="usersae"></p>
+        <p hidden id="permsae"></p>
+        <h1 class="title">EiLO3 Access Configuration</h1>
+        <h2>Note: EiLO Will have to be restarted before changes take effect</h2>
+        <br><br>
+                <center>
+                    
+        
+        <!--
+        <h1>User edit</h1>
+        <input type="checkbox" id="chk1" name="http" value="http">
+        <label for="vehicle1">Webserver Permission</label>
+        <input type="checkbox" id="chk2" name="irc" value="irc">
+        <label for="vehicle1">Remote Console Permission</label>
+        <input type="checkbox" id="chk3" name="vert" value="vert">
+        <label for="vehicle1">Virtual Media Permission</label>
+        <input type="checkbox" id="chk4" name="http" value="http">
+        <label for="vehicle1">Virtual Power Permission</label>
+        <input type="checkbox" id="chk5" name="http" value="http">
+        <label for="vehicle1">Change EiLO Settings</label>
+        <input type="checkbox" id="chk6" name="http" value="http">
+        <label for="vehicle1">Administrator</label>
+        -->
+
+    </center><h1 class="ae">Services</h1>
+    <p id="webs" hidden></p>
+    <p id="virt" hidden></p>
+    <p id="clie" hidden></p>
+    <p id="remo" hidden></p>
+
+    <p id="sn" ></p>
+    <p id="ln" ></p>
+    <p id="nh" ></p>
+    <p id="lp" ></p>
+
+<form action="/accessports.html" method="POST" enctype="multipart/form-data">
+            
+    <input type="text" id="webserver" placeholder="Web Server (HTTP) port" name="webserver" required> <h3> HTTP Port</h3></input><br>
+    <input type="text" id="virtmedia" placeholder="Virtual Media port" name="virtmedia" required> <h3> Virtual Media Port</h3></input><br>
+    <input type="text" id="clientapp" placeholder="Client Application port" name="clientapp" required> <h3> Port to EiLO Client Program Running locally on Server </h3></input><br>
+    <input type="text" id="remotecon" placeholder="Remote Console Port" name="remotecon" required>  <h3> Remote Console Port</h3></input><br>
+
+                <input type="submit" value="Apply" class="btn">
+            </form>
+
+
+<!--
+    <input type="text" id="webserver" placeholder="Web Server (HTTP) port" name="webserver" required> <h3> HTTP Port</h3></input><br>
+    <input type="text" id="virtmedia" placeholder="Virtual Media port" name="virtmedia" required> <h3> Virtual Media Port</h3></input><br>
+    <input type="text" id="clientapp" placeholder="Client Application port" name="clientapp" required> <h3> Port to EiLO Client Program Running locally on Server </h3></input><br>
+    <input type="text" id="remotecon" placeholder="Remote Console Port" name="remotecon" required>  <h3> Remote Console Port</h3></input><br>
+            <button onclick="apply();">Apply</button>-->
+<form action="/accessoptions.html" method="POST" enctype="multipart/form-data"></form>
+        <h1>Access Options</h1>
+    <input type="text" id="servername" placeholder="Server Name" name="servername" required> <h3> Server Name</h3></input><br>
+    <input type="text" id="longname" placeholder="Full Server Product Name" name="longname" required><h3> Full Server Product Name</h3></input><br>
+    <input type="text" id="networkhost" placeholder="Network Hostname" name="networkhost" required><h3> Servers Network Hostname (DNS Domain or WORKGROUP Name)</h3></input><br>
+    <input type="text" id="localip" placeholder="Server IP Address" name="localip" required><h3> Servers Local IP Address</h3></input><br>
+    <input type="text" id="fqdn" placeholder="Server FQDN" name="fqdn"><h3> Servers Fully Qualified Domain Name</h3></input><br>
+    <br>
+    <input type="text" id="serial" placeholder="Serial Baud Rate" name="serial" required><h3> Serial Baud Rate (9600 Default)</h3></input>
+    <br>
+<input type="submit" value="Apply" class="btn">
+</form>
+    <h1>Addon Configuration</h1>
+    <p>Discord logging equipment</p>
+    <input type="text" id="token" placeholder="Discord bot token" name="token"><h3> Discord bot token (This wont auto populate)</h3></input><br>
+    <input type="text" id="webhook" placeholder="Discord Webhook URL" name="webhook"><h3> Discord Webhook URL (This wont auto populate)</h3></input>
+        <script> 
+            newuser = function() {
+                window.location.href = "/newuser.html";
+            }
+            
+            httpport = function() {
+            fetch("/http")
+                .then(response => response.text())
+                .then(data => ae(data))
+                .catch(error => console.log(error));
+                function ae(data) {
+                    console.log(data);
+                    document.getElementById("webs").innerHTML = data;
+                }
+            }
+
+            virtport = function() {
+            fetch("/virt")
+                .then(response => response.text())
+                .then(data => aea(data))
+                .catch(error => console.log(error));
+                function aea(data) {
+                    document.getElementById("virt").innerHTML = data;
+                }
+            }  
+            clieport = function() {
+            fetch("/clie")
+                .then(response => response.text())
+                .then(data => aeae(data))
+                .catch(error => console.log(error));
+                function aeae(data) {
+                    document.getElementById("clie").innerHTML = data;
+                }
+            }  
+            remoport = function() {
+            fetch("/remo")
+                .then(response => response.text())
+                .then(data => aeaeae(data))
+                .catch(error => console.log(error));
+                function aeaeae(data) {
+                    document.getElementById("remo").innerHTML = data;
+                }
+            }  
+
+            prodname = function() {
+            fetch("/smallinfo")
+                .then(response => response.text())
+                .then(data => aeaeae(data))
+                .catch(error => console.log(error));
+                function aeaeae(data) {
+                    document.getElementById("ln").innerHTML = data;
+                }
+            }  
+            svrname = function() {
+            fetch("/servername")
+                .then(response => response.text())
+                .then(data => aeaeae(data))
+                .catch(error => console.log(error));
+                function aeaeae(data) {
+                    document.getElementById("sn").innerHTML = data;
+                }
+            }  
+            hstname = function() {
+            fetch("/hostname")
+                .then(response => response.text())
+                .then(data => aeaeae(data))
+                .catch(error => console.log(error));
+                function aeaeae(data) {
+                    document.getElementById("nh").innerHTML = data;
+                }
+            }  
+
+            localip = function() {
+            fetch("/localip")
+                .then(response => response.text())
+                .then(data => aeaeae(data))
+                .catch(error => console.log(error));
+                function aeaeae(data) {
+                    document.getElementById("lp").innerHTML = data;
+                }
+            }  
+
+            updateinfo = function() {
+                document.getElementById("webserver").value = document.getElementById("webs").innerHTML;
+                document.getElementById("virtmedia").value = document.getElementById("virt").innerHTML;
+                document.getElementById("clientapp").value = document.getElementById("clie").innerHTML;
+                document.getElementById("remotecon").value = document.getElementById("remo").innerHTML;
+
+                document.getElementById("servername").value = document.getElementById("sn").innerHTML;
+                document.getElementById("longname").value = document.getElementById("ln").innerHTML;
+                document.getElementById("networkhost").value = document.getElementById("nh").innerHTML;
+                document.getElementById("localip").value = document.getElementById("lp").innerHTML;
+            }
+
+
+            const delay = ms => new Promise(res => setTimeout(res, ms));
+            const autoupdate = async () => {
+              await delay(5000);
+              fetchpowerstate();
+              console.log("Auto Updated")
+              autoupdate()
+            }
+            autoupdate()
+            const useraeae = async () => {
+              httpport();
+              remoport();
+              virtport();
+              clieport();
+              prodname();
+              svrname();
+              hstname();
+              localip();
+
+              await delay(800);
+              updateinfo();
+              console.log("Updated ports")
+            }
+            useraeae();
+            
+        </script>
+    </body>
+</html>

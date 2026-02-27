@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+      button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #003366;
+        }
+
+            .ae {
+                position: relative;
+                top:  0px;
+                left: 0px;
+            } 
+            body {
+                font-family: Arial, sans-serif;
+            }
+            .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #666;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        form labelpre {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        form label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            margin-top: -17px;
+        }
+        form input[type="text"], form input[type="password"] {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #666;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        form input[type="submit"] {
+            padding: 10px 20px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        form input[type="submit"]:hover {
+            background: #003366;
+        }
+
+        </style>
+    </head>
+    <body>
+        <p hidden id="usersae"></p>
+        <p hidden id="permsae"></p>
+        <h1 class="title">New User</h1>
+            <h3>Enter the account information</h3>
+            <form action="newuser.html" method="POST" enctype="multipart/form-data">
+                
+                <labelpre for="uname"><b>Username:</b></labelpre>
+                <input type="text" placeholder="EiLO Username" name="uname" required>
+                <br>
+                <labelpre for="psw"><b>Password:</b></labelpre>
+                <input type="password" placeholder="EiLO Password" name="psw" required>
+                <!--<label for="psw"><b>Password Confirm: *</b></label>
+                <input type="password" placeholder="EiLO Password" name="pswconf" required>
+                <br>-->
+
+        <h1>Permissions</h1>
+        <input type="checkbox" id="chk1" name="http" value="http" checked>
+        <label for="chk1">Webserver Permission (HTTP)</label>
+        <input type="checkbox" id="chk2" name="irc" value="irc" checked>
+        <label for="chk2">Remote Console Permission (IRC)</label>        
+        <input type="checkbox" id="chk3" name="virt" value="virt" checked>
+        <label for="chk3">Virtual Media Permission</label>
+        <input type="checkbox" id="chk4" name="pwer" value="pwer" checked>
+        <label for="chk4">Virtual Power Permission</label>
+        <input type="checkbox" id="chk5" name="sett" value="sett" checked>
+        <label for="chk5">Change EiLO Settings</label>
+        <input type="checkbox" id="chk6" name="admin" value="admin" checked>
+        <label for="chk6">Administrator</label>
+        <br>
+<br><br><br><br>
+                <input type="submit" value="Add User" class="btn">
+            </form>
+
+        <!--
+        <h1>User edit</h1>
+        <input type="checkbox" id="chk1" name="http" value="http">
+        <label for="vehicle1">Webserver Permission</label>
+        <input type="checkbox" id="chk2" name="irc" value="irc">
+        <label for="vehicle1">Remote Console Permission</label>
+        <input type="checkbox" id="chk3" name="vert" value="vert">
+        <label for="vehicle1">Virtual Media Permission</label>
+        <input type="checkbox" id="chk4" name="http" value="http">
+        <label for="vehicle1">Virtual Power Permission</label>
+        <input type="checkbox" id="chk5" name="http" value="http">
+        <label for="vehicle1">Change EiLO Settings</label>
+        <input type="checkbox" id="chk6" name="http" value="http">
+        <label for="vehicle1">Administrator</label>
+        -->
+        <br>
+        <button onclick="history.back()">Cancel</button>
+    </center>
+        <script> 
+
+        </script>
+    </body>
+</html>

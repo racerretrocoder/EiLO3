@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+      button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #003366;
+        }
+
+            .ae {
+                position: relative;
+                top:  0px;
+                left: 0px;
+            } 
+            body {
+                font-family: Arial, sans-serif;
+            }
+            .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #666;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+        </style>
+    </head>
+    <body>
+        <p hidden id="usersae"></p>
+        <p hidden id="permsae"></p>
+        <h1 class="title">EiLO3 User Account Administration</h1>
+        <h2>Note: Newly created accounts may take up to a minuet to appear here! Refresh the page when needed</h2>
+                <center><h1 class="ae">Account List</h1>
+        <table id="users" class="data-table">
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Login name</th>
+                    <th>Username</th>
+                    <th>HTTP Access</th>
+                    <th>IRC Access</th>
+                    <th>Virtual Media</th>
+                    <th>Virtual Power</th>
+                    <th>Settings</th>
+                    <th>Administrator</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--
+                <tr>
+                    <td>Administrator</td>
+                    <td>Administrator</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td> 
+                    <td>Yes</td>
+                    <td>Yes</td>
+                    <td>Yes</td>
+                </tr>-->
+            </tbody>
+        </table>
+        <!--
+        <h1>User edit</h1>
+        <input type="checkbox" id="chk1" name="http" value="http">
+        <label for="vehicle1">Webserver Permission</label>
+        <input type="checkbox" id="chk2" name="irc" value="irc">
+        <label for="vehicle1">Remote Console Permission</label>
+        <input type="checkbox" id="chk3" name="vert" value="vert">
+        <label for="vehicle1">Virtual Media Permission</label>
+        <input type="checkbox" id="chk4" name="http" value="http">
+        <label for="vehicle1">Virtual Power Permission</label>
+        <input type="checkbox" id="chk5" name="http" value="http">
+        <label for="vehicle1">Change EiLO Settings</label>
+        <input type="checkbox" id="chk6" name="http" value="http">
+        <label for="vehicle1">Administrator</label>
+        -->
+        <button onclick="newuser();">New User</button>
+        <button onclick="edituser();">Edit User</button>
+        <button onclick="deleteuser();">Delete User</button>
+        <h3>The Administrator account can not be changed</h3>
+    </center>
+        <script> 
+            newuser = function() {
+                window.location.href = "/newuser.html";
+            }
+            
+            userlist = function() {
+            fetch("/usersget")
+                .then(response => response.text())
+                .then(data => ae(data))
+                .catch(error => console.log(error));
+                function ae(data) {
+                    document.getElementById("usersae").innerHTML = data;
+                }
+            }
+
+
+            permlist = function() {
+                fetch("/permsget")
+                .then(response => response.text())
+                .then(data => ae(data))
+                .catch(error => console.log(error));
+                let ae = function(data) {
+                    document.getElementById("permsae").innerHTML = data;
+                }
+            }
+                            userlist();
+                permlist();
+                                userlist();
+                permlist();
+                                userlist();
+                permlist();
+                                userlist();
+                permlist();
+                                userlist();
+                permlist();
+            updateuser = function() {
+                //let users = "Administrator|eilo|Test User|eilo|"; // users (testing)
+                //let perms   = "1,1,1,1,1,1|eilo|1,1,1,1,1,0|eilo|"; // perms (testing)
+
+
+                var userspre = document.getElementById("usersae");
+                var permspre = document.getElementById("permsae");
+                var users = userspre.innerHTML;
+                var perms = permspre.innerHTML;
+                
+                console.log(users);
+                console.log(perms);
+                let userarray = users.split("|eilo|");
+                let permarray = perms.split("|eilo|");
+                console.log(userarray);
+                console.log(permarray);
+                console.log(userarray.length);
+                console.log(permarray.length);
+                for (let i = 0; i < userarray.length - 1; i++) {
+                    console.log(i);
+                    console.log(userarray[i]);
+                    var username = userarray[i];
+                    let table = document.getElementById("users");
+                    let row = table.insertRow(-1); // insert a row below 
+                    let cell0 = row.insertCell(0);
+                    // put a check b in cell0
+                    var checkbox = document.createElement('input');
+                    checkbox.type = "checkbox";
+                    checkbox.name = "name";
+                    checkbox.value = "value";
+                    checkbox.checked = false;
+                    checkbox.id = "chk"+i+"";
+                    var label = document.createElement('label')
+                    label.htmlFor = "id";
+                    label.appendChild(document.createTextNode(''));
+                    if (i != 0){
+                        cell0.appendChild(checkbox);
+                        cell0.appendChild(label);
+                    }
+                    let cell1 = row.insertCell(1);
+                    let cell2 = row.insertCell(2);
+                    let cell3 = row.insertCell(3);
+                    let cell4 = row.insertCell(4);
+                    let cell5 = row.insertCell(5);
+                    let cell6 = row.insertCell(6);
+                    let cell7 = row.insertCell(7);
+                    let cell8 = row.insertCell(8);   
+                    cell1.innerHTML = username; 
+                    cell2.innerHTML = username;
+                    userperms = permarray[i];
+                    newarray = userperms.split(",");
+                    console.log("new array:");
+                    console.log(newarray);
+                    for (let ae = 0; ae < newarray.length; ae++) {
+                        // change 1 to yes and change 0 to no
+                        if (newarray[ae] == "1") {
+                            newarray[ae] = "Yes"; //ae
+                        } else {
+                            newarray[ae] = "No";
+                        }
+                        console.log(newarray);
+                    }
+                    //http,irc,vert,pwer,sett,ADMIN
+                    var http = newarray[0];
+                    var irc = newarray[1];
+                    var vert = newarray[2];
+                    var pwer = newarray[3];
+                    var sett = newarray[4];
+                    var admin = newarray[5];
+                    // now apply the ae perms to da tablef  
+                    cell3.innerHTML = http;
+                    cell4.innerHTML = irc;
+                    cell5.innerHTML = vert;
+                    cell6.innerHTML = pwer;
+                    cell7.innerHTML = sett;
+                    cell8.innerHTML = admin;
+
+                    
+                }
+            }
+            
+
+            checkae = function() {
+                //console.log(document.getElementById("chk0").checked)
+                var userspre = document.getElementById("usersae");
+                var permspre = document.getElementById("permsae");
+                var users = userspre.innerHTML;
+                var perms = permspre.innerHTML;
+                console.log(users);
+                console.log(perms);
+                let userarray = users.split("|eilo|");
+                let permarray = perms.split("|eilo|");
+                console.log(userarray);
+                console.log(permarray);
+                console.log(userarray.length);
+
+                for (let ae = 1; ae < userarray.length - 1; ae++) {
+                    var checkboxid = "chk"+ae+"";
+                    console.log(checkboxid);
+                    checkbox = document.getElementById(checkboxid).checked;
+                    console.log(checkbox);
+                    if (checkbox == true) {
+                        console.log("Will edit!");
+                        edit(checkboxid);
+                    }
+
+                }
+            }
+
+
+
+            const delay = ms => new Promise(res => setTimeout(res, ms));
+            const autoupdate = async () => {
+              await delay(5000);
+              fetchpowerstate();
+              console.log("Auto Updated")
+              autoupdate()
+            }
+            autoupdate()
+            const useraeae = async () => {
+              await delay(2000);
+              updateuser();
+              console.log("Updated useres")
+            }
+            useraeae();
+        </script>
+    </body>
+</html>
