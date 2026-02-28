@@ -8,7 +8,7 @@ Note that any copyright notice through out this project is just as a placeholder
 "Backdoor Interactive" Doesnt exist. Fictional company.
 
 
-This Project does not have a license. 
+This project is licensed under Creative Commons Zero (CC0)
 No rights Reserved
 
 No AI Was used in this project whatsoever. Therefore it is considered "ae" Compatible! 
