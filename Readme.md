@@ -3,7 +3,7 @@
 This is my EiLO Project!
 Making remote offline computer management Seceure(ish), Fun, And enjoyable!
 EiLO is my Python / Arduino based computer management suite that is capable of controlling a computer even when its turned off. It has a built in HTTP server that is implemented with secure user access control. A large API, Optional connectivity with discord via a bot and webhook, and much more with more to come!
-
+![HTTP Server](/EiLO.png)
 ![HTTP Server](/EiLO/http.png)
 
 This project is licensed under Creative Commons Zero (CC0)
