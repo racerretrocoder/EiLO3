@@ -1,0 +1,8 @@
+I want to be able to stream live VGA Photoage off a capture card (So ill need that) Over EiLO3 so that one can watch the connected system boot
+And maybe possibly even access the bios with it...
+
+But here is my working remote console with video over socket and a small mouse setup. It uses 2 ports though
+
+
+
+Note that the following code requires more imports than EiLO
