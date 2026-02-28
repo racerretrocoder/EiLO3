@@ -1,0 +1,6 @@
+serial
+requests
+datetime
+platform
+subprocess
+discord
