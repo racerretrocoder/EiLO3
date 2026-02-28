@@ -1,15 +1,20 @@
 # Externally Integrated Lights Out (EiLO) Verion 3.0
 # Build 190, Febuary 20th 2026
-# Copyright (c) 2026, Backdoor Interactive, Phoenix
+# Copyright (c) 2025 - 2026, Backdoor Interactive, Phoenix
 
 # This is the main EiLO 3 Program. Its ment to be ran on a small linux computer. (Preferably a raspberry pi)
 # Future ideas: Make an effort to allow for windows serial communcation to the controller instead
 # Recomended python version: 3.8.8
+
+# If you ever want to try this software out, Or if you need help setting it up. Ask me, id love to help
+
 import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-
 # For Windows # from pythonping import ping 
 
+
+# For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)
+# (You set this password during the inital setup when you run this script for the first time!)
 
 
 automatedaction = ""
@@ -25,7 +30,7 @@ authusers = [] # another list to map ips to usernames
 # authenticatedAddresses = ["192.168.0.148","127.0.0.1","98.43.65.127"]
 # (replace them with your own)
 # to permanitely allow that ip in. they can be local or internet ip's
-permissions = ["1,1,1,1,1,1"]
+permissions = ["1,1,1,1,1,1"] # This gets updated as more users get created. Default unchangeable permissions for the administrator account
 
 class configuration:
     def accountrebuild():
