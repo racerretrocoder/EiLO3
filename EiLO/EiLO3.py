@@ -10,6 +10,7 @@
 
 import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from getpass import getpass
 # For Windows # from pythonping import ping 
 
 name = os.name
@@ -21,9 +22,23 @@ def clearscreen():
         os.system("clear")
 clearscreen()
 
+debug = 0
+def logprint(message,option=""):
+    global debug
+    if debug == 1:
+        if option != "":
+            print(message,option)
+        else:
+            print(message)
+    else:
+        ae = 1 # print("ae")
 
 
-# For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)
+
+
+
+
+# For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)"
 # (You set this password during the inital setup when you run this script for the first time!)
 
 
@@ -63,7 +78,7 @@ class configuration:
         # now all accounts are in the string,
         # close it off
         mainstring = mainstring + "ENDWEB\n"
-        print(mainstring)
+        logprint(mainstring)
         return mainstring
 
     def readiloconfig(newline=0): # config reader
@@ -80,24 +95,24 @@ class configuration:
         return configarray # outputs array xd
     
     def updateaccounts():
-        print("Account update! (commit to iloconfig)")
+        logprint("Account update! (commit to iloconfig)")
         with open("iloconfig.txt", "r+") as f:
             d = f.readlines()
-            print(d)
+            logprint(d)
             foundit = 0
             for i in range(len(d)):
-                print(d[i])
+                logprint(d[i])
                 if d[i] == "WEBACCESS\n":
                     foundit = 1
-                    print(f"new file output: \n{d[:i]}")
+                    logprint(f"new file output: \n{d[:i]}")
                     f.seek(0)
                     f.write("") # Erase the file
                     f.writelines(d[:i]) # Restore the file
-                    print(configuration.accountrebuild())
+                    logprint(configuration.accountrebuild())
                     f.write(f"{configuration.accountrebuild()}") # Rebuild the newest account hiarchy
             # success?
             if foundit == 1:
-                print("Success in updating users!")
+                logprint("Success in updating users!")
                 # clean up the end of the file
             else:
                 # append WEBACCESS to the bottom of the config and rerun
@@ -116,14 +131,14 @@ class EventLog:
         try:
             with open(fn,"r") as ae:
                 for line in ae:
-                    #print(line)
+                    #logprint(line)
                     if br == 0:
                         mainstring = mainstring + line.rstrip("\n")
-                        #print(mainstring)
+                        #logprint(mainstring)
                         mainarray.append(line.rstrip("\n"))
                     else:
                         mainstring = mainstring + line.replace("\n","<br>")
-                        #print(mainstring)
+                        #logprint(mainstring)
                         mainarray.append(line.replace("\n","<br>"))
             ae.close()
             return mainarray,mainstring
@@ -149,7 +164,7 @@ class EventLog:
                 now = datetime.datetime.now()
                 thestring = f"[{now}] {log}\n"
                 ae.write(thestring)
-                print("Even log cleared!")
+                logprint("Even log cleared!")
                 ae.close()
 EventLog.eventwrite("----------------")
 EventLog.eventwrite("EiLO3 Started up!")
@@ -176,8 +191,8 @@ if os.path.isfile("iloconfig.txt") != True:
     cname = input("A small name for the computer which EiLO is installed in:\n> ")
     longcname = input("The full Manafactuer/model of the computer which iLO is installed in:\n> ")
     host = input("The computers network hostname: \n> ")
-    print("Now create a master password to keep EiLO secure (You will need this when accessing locally)")
-    adminpass = input("password \n> ")
+    print("Now create a password for the Administrator account\nNote the input is hidden for security")
+    adminpass = getpass("password \n> ")
     print("Password accepted!")
     clearscreen()
     print("Password accepted")
@@ -192,13 +207,13 @@ if os.path.isfile("iloconfig.txt") != True:
         break
     print("OPTIONAL: Enter in a Discord bot token to host a remote management bot to control this EiLO 3 from.")
     print("To skip this: Simply press [ENTER]")
-    token = str(input("> "))
+    token = str(getpass("> "))
     if token == "":
         token = "NONE"
     clearscreen()
     print("OPTIONAL: Enter in a discord webhook to send Logs and other information to")
     print("To skip this: Simply press [ENTER]")
-    weburl = str(input("> "))
+    weburl = str(getpass("> "))
     if weburl == "":
         weburl = "NONE"
     clearscreen()
@@ -259,10 +274,10 @@ else:
                 try:
                     if config[startindex+aeindex] != "ENDWEB":
                         # this an entry
-                        print("Found webserver user/pass")
-                        print("Username: ",config[startindex+aeindex])
-                        print("Password: ",config[startindex+aeindex+1])
-                        print("\n[Appended to the list of allowed users for webserver]")
+                        logprint("Found webserver user/pass")
+                        logprint("Username: ",config[startindex+aeindex])
+                        logprint("Password: ",config[startindex+aeindex+1])
+                        logprint("\n[Appended to the list of allowed users for webserver]")
                         mainuser = config[startindex+aeindex]
                         mainuser = mainuser.split("\n")
                         mainuser = mainuser[0]
@@ -282,9 +297,9 @@ else:
                         scanfin = 1
                         break
                 except:
-                    print("thats the end of the web creds")
+                    logprint("thats the end of the web creds")
                     break
-            print("Finished webserver user/pass scan")
+            logprint("Finished webserver user/pass scan")
     
 
 
@@ -310,7 +325,7 @@ def updatetime(hour,pm):
         hourmil = hour
         if pm == 1:
             hourmil = hourmil + 12
-        print(f"Military time: {hourmil}")
+        logprint(f"Military time: {hourmil}")
         f.write(f"{hourmil}")
 
 if os.path.isfile("config.txt") != True:
@@ -369,47 +384,47 @@ def writeserialdata(msg):
     connected = 0
     # For linux first
     try:
-        print("INIT EiLO Serial To Arduino")
+        logprint("INIT EiLO Serial To Arduino")
         time.sleep(0.5)
-        print("Attempting to connect on ACM0")
+        logprint("Attempting to connect on ACM0")
         ser = serial.Serial('/dev/ttyACM0',baudrate, timeout=1)
-        print("Connection to the system Successful!")
+        logprint("Connection to the system Successful!")
         connected = 1
     except:
-        print("Failed on ACM0")
+        logprint("Failed on ACM0")
         try:
-            print("Attempting to connect on ACM1")
+            logprint("Attempting to connect on ACM1")
             ser = serial.Serial('/dev/ttyACM1',baudrate, timeout=1)
-            print("Connection to the system Successful!")
+            logprint("Connection to the system Successful!")
             connected = 1
         except:
-            print("Failed on ACM1")
+            logprint("Failed on ACM1")
             try:
-                print("Attempting to connect on ACM2")
+                logprint("Attempting to connect on ACM2")
                 ser = serial.Serial('/dev/ttyACM2',baudrate, timeout=1)
-                print("Connection to the system Successful!")
+                logprint("Connection to the system Successful!")
                 connected = 1
             except:
-                print("Failed ACM2")
+                logprint("Failed ACM2")
                 try:
-                    print("Attempting to connect on ACM3")
+                    logprint("Attempting to connect on ACM3")
                     ser = serial.Serial('/dev/ttyACM3',baudrate, timeout=1)
-                    print("Connection to the system Successful!")
+                    logprint("Connection to the system Successful!")
                     connected = 1
                 except:
-                    print("Could not connect to the controller (Is the interface connected?)\nContinuing anyway...")
+                    logprint("Could not connect to the controller (Is the interface connected?)\nContinuing anyway...")
                     connected = 0
                     time.sleep(1)
     if connected == 1:
         ser.flush()
-        print("intentional delay, 4 seconds")
+        logprint("intentional delay, 4 seconds")
         time.sleep(4)
-        print(f"Sending message: {msg}")
+        logprint(f"Sending message: {msg}")
         ser.write(msg)
         EventLog.eventwrite(f"Sent '{msg}' over serial to controller")
 
 
-
+    # This is the CLI for the remote console
 def parsecommand(username, cmd):
     global computername
     global powerstate
@@ -419,8 +434,8 @@ def parsecommand(username, cmd):
     global paswds
     global permissions
     if cmd == "help":
-        print("ae")
-        return f"<{username}>@{computername}_EiLO $ ","&&iLO help\npower <type>      Performs an action on the Power Button\n  |---power momentary   Press the Power button once\n  |---power hold        Press and hold the Power button for 5 seconds (Will force shutdown)\n  |---power coldboot    Power hold followed by momentary. Resulting in a cold boot\n  |---power reset       Reset the system\nMore commands coming soon."
+        #print("ae")
+        return f"<{username}>@{computername}_EiLO $ ","EiLO 3 Remote Console CLI Help\n\npower <type>      Performs an action on the Power Button\n  |---power momentary   Press the Power button once\n  |---power hold        Press and hold the Power button for 5 seconds\n  |---power coldboot    Power hold followed by a momentary.\n  |---power reset       Reset the system\n\nGeneral Configuration\nUsers\n\nshow users   Show existing user accounts followed by there permission string\nshow users http   show users currently logged into an active session via HTTP\ncreate user <username> <password> <permstring>   Create a user account\nedit user <username> <newpass> <newperm>   Modify an existing user\ndelete user <username>   Delete an existing user\n\n\nconfig motd <message>   Customize the login security banner\n\noem_eiloping <ipaddress>   Ping an IP address through EiLO\noem_clientping <ipaddress>   Ping an IP Address through the client\n\n\nEnd of help! (for now ;)"
     if cmd == "power on":
         writeserialdata(b"A")
         printlog(f"{computername} | The Virtual Power Button was pressed momentarily remotely")
@@ -450,26 +465,26 @@ def parsecommand(username, cmd):
         thestring = "Currently active user sessions on HTTP:\n"
         for i in range(len(authusers)):
             thestring = thestring + f"{authusers[i]}\n"
-            print(thestring)
+            logprint(thestring)
         return f"<{username}>@{computername}_EiLO $ ", thestring
     if cmd == "show users":
         thestring = "Current users registered into EiLO:\n"
         for i in range(len(users)):
             thestring = thestring + f"Username: {users[i]} - Permissions: {permissions[i]}\n"
-            print(thestring)
+            logprint(thestring)
         return f"<{username}>@{computername}_EiLO $ ", thestring
     # now for config commands
     if cmd.startswith("create user"):
         http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
-        print("admin:",admin)
+        logprint("admin:",admin)
         if admin == 1 or admin == "1" or admin == " 1" or admin == "1 " or admin == " 1 ":
             try:
                 ae = cmd.split("create user")
                 ae = ae[1]
                 ae = ae.split(" ")
-                print(ae[1]) # un
-                print(ae[2]) # pw
-                print(ae[3]) # pm
+                logprint(ae[1]) # un
+                logprint(ae[2]) # pw
+                logprint(ae[3]) # pm
                 unamemain = ae[1]
                 pswmain = ae[2]
                 permstring = ae[3]
@@ -483,9 +498,9 @@ def parsecommand(username, cmd):
                     users.append(unamemain)
                     paswds.append(pswmain)
                     permissions.append(permstring)
-                    print("\n\naccounts updated:\n\n")
-                    print(users)
-                    print(paswds)
+                    logprint("\n\naccounts updated:\n\n")
+                    logprint(users)
+                    logprint(paswds)
                     time.sleep(2)
                     configuration.updateaccounts()
                     return f"<{username}>@{computername}_EiLO $ ", f"Successfully created a new user under the username of {ae[1]}\nNote: It may take up to 30 seconds for the changes to apply globally"
@@ -496,19 +511,52 @@ def parsecommand(username, cmd):
 
     if cmd.startswith("delete user ") == 1:
         http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
-        print("admin:",admin)
+        logprint("admin:",admin)
         if admin == 1 or admin == "1" or admin == " 1" or admin == "1 " or admin == " 1 ":
             ae = cmd.split("delete user ")
             ae = ae[1]
-            print(f"request over remote console to delete user: {ae}")
+            logprint(f"request over remote console to delete user: {ae}")
             ae = ae.replace(" ","")
+            if ae == "Administrator":
+                return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Cant delete the Administrator account"
             EiLO.deleteuser(ae)
             return f"<{username}>@{computername}_EiLO $ ", f"Successfully deleted user: {ae}"
-
         else:
             return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Insuffciant Permissions\nYour account {username} does not have the required permissions to administor EiLO user accounts to the server"
 
-
+    if cmd.startswith("edit user ") == 1:
+        http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
+        logprint("admin:",admin)
+        if admin == 1 or admin == "1" or admin == " 1" or admin == "1 " or admin == " 1 ":
+            ae = cmd.split("edit user ")
+            ae = ae[1]
+            ae = ae.split(" ")
+            uname = ae[0]
+            pwd = ae[1]
+            perm = ae[2]
+            if uname in users:
+                logprint("ok we good!")
+            else:
+                return f"<{username}>@{computername}_EiLO $ ", f"ERROR: User: {uname} does not exist, Use show users to check a list of available users!"
+            logprint(f"request over remote console to edit user: {uname}")
+            
+            
+            if ae == "Administrator":
+                return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Cant edit the Administrator Account"
+            EiLO.deleteuser(ae[0])
+            time.sleep(0.5)
+            # now re add
+            users.append(uname)
+            paswds.append(pwd)
+            permissions.append(perm)
+            logprint("\n\naccounts updated:\n\n")
+            logprint(users)
+            logprint(paswds)
+            time.sleep(1)
+            configuration.updateaccounts()
+            return f"<{username}>@{computername}_EiLO $ ", f"Successfully edited user: {uname}"
+        else:
+            return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Insuffciant Permissions\nYour account {username} does not have the required permissions to administor EiLO user accounts to the server"
 
     if cmd.startswith("config motd") == 1:
         ae = cmd.split("config motd")
@@ -520,22 +568,18 @@ def parsecommand(username, cmd):
         index = 9
         with open("iloconfig.txt", 'w') as file:
             settings[index] = newmotd
-            print("new config:",settings)
-            print("\nnew MOTD:",settings[index]) 
+            logprint("new config:",settings)
+            logprint("\nnew MOTD:",settings[index]) 
             global motd
             motd = newmotd
             file.writelines(settings)
             file.close()
             return f"<{username}>@{computername}_EiLO $ ", f"Successfully changed MOTD"
            
-
     if cmd == "exit":
         return f"<{username}>@{computername}_EiLO $ ", f"Ending Remote Console Connection&&exit"
-
     else:
         return f"<{username}>@{computername}_EiLO $ ", "\nstatus=0\nCommand Processing Failed.\n"    
-
-
 
 # some help displays
 
@@ -559,7 +603,7 @@ def help(cmd=""):
         print("\nShort commands for power\n  |---power on       Turn on the system")
         print("  |---power off       Logically power off the system")
 
-        print("")
+        print("More commands over on IRC!")
         print("End Help")
     command()
 
@@ -584,7 +628,7 @@ def help(cmd=""):
         print("\nShort commands\n  |---power on        Turn on the system")
         print("  |---power off       Logically power off the system\n")
         print("autostart      Configure PhnyAutoStart")
-        print("")
+        print("More commands on IRC!")
         print("End Help")
     command()
 
@@ -597,13 +641,31 @@ def doconfig():
 
 def command(): # This is locally
     global powerstate
-    cmd = str(input(f"{computername} iLO $ "))
+    global debug
+    cmd = str(input(f"{computername} EiLO > "))
     if cmd == "help":
         print("")
         print("")
         help()
+    if cmd == "log":
+        debug = 1
+        print("Logging to console Enabled")
+        command()
+    if cmd == "no log":
+        debug = 0
+        print("Logging to console Disabled")
+        command()
     if cmd == "config":
         doconfig(0)
+    if cmd == "ae":
+        clearscreen()
+        print("ae")
+        # special ae prompt
+        ae = input("ae!>")
+        if ae == "ae":
+            print("ae")
+
+        command()
     if cmd == "autostart":
         print("\nPhnyAutoStart - Version 1.0\n")
         print("Program Help")
@@ -804,34 +866,34 @@ class HostCommunication:
 
     def getnic():
         global localip
-        print("getnic()")
+        logprint("getnic()")
         csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         csFT.connect((localip, 8750))
         # Send command
         csFT.send(b"getnic")
-        print("Command sent! Waiting...")
+        logprint("Command sent! Waiting...")
         data = csFT.recv(1024)
         decoded = data.decode('utf-8')
-        print("Data from client recived")
-        print(decoded)
+        logprint("Data from client recived")
+        logprint(decoded)
         return decoded
 
     def getclientinfo():
         global localip
-        print("getclientinfo()")
+        logprint("getclientinfo()")
         csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         csFT.connect((localip, 8750))
         # Send command
         csFT.send(b"getsys")
-        print("Command sent! Waiting...")
+        logprint("Command sent! Waiting...")
         data = csFT.recv(1024)
         decoded = data.decode('utf-8')
-        print("Data from client recived")
-        print(decoded)
+        logprint("Data from client recived")
+        logprint(decoded)
         cpuname = decoded
         thelist = cpuname.split("|eilo|")
-        print(thelist)
-        print("Success")
+        logprint(thelist)
+        logprint("Success")
         cpu = thelist[0]
         os = thelist[1]
         release = thelist[2]
@@ -845,7 +907,7 @@ class HostCommunication:
         usagecpu = thelist[10]
         # returns 8 variables
         time.sleep(0.1)
-        print("Complete! Sending back 'ae' to your client...")
+        logprint("Complete! Sending back 'ae' to your client...")
         csFT.send(b"ae") # let client know that we good
         time.sleep(0.1)
         return cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpu
@@ -856,20 +918,20 @@ class HostCommunication:
         csFT.connect((localip, 8750))
         # get a screenshot from client
         csFT.send(b"getscr")
-        print("Command sent! Waiting...")
+        logprint("Command sent! Waiting...")
         with open("clientscreenshot.png",'wb') as scr:
             while True:
-                #print("Now listening for screenshot data.")
+                #logprint("Now listening for screenshot data.")
                 data = csFT.recv(1024)
-                #print(data)
+                #logprint(data)
                 if data == b"aeeiloae":
-                    print("Data completed, ae recived")
+                    logprint("Data completed, ae recived")
                     break
                 if not data:
-                    print("Data sent over complete")
+                    logprint("Data sent over complete")
                     break
                 scr.write(data)
-            print("Successfully transfered screenshot")
+            logprint("Successfully transfered screenshot")
             scr.close()
             # send back an ae
             time.sleep(0.1)
@@ -877,7 +939,7 @@ class HostCommunication:
 
     def oembdi_ping(ipaddr):
         global localip
-        print(f"Wants to ping: {ipaddr}")
+        logprint(f"Wants to ping: {ipaddr}")
         csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         csFT.connect((localip, 8750))
         # get a screenshot from client
@@ -918,7 +980,10 @@ class EiLO:
         return ip
     
     def deleteuser(username):
-        print("Deleting: ",username)
+        if username == "Administrator":
+            logprint("Cant delete the default user")
+            return 0
+        logprint("Deleting: ",username)
         global users
         global paswds
         global permissions
@@ -932,22 +997,24 @@ class EiLO:
                 users.remove(username)
                 password = paswds[i]
                 paswds.remove(password)
-                print(f"User {username} Deleted successfully")
+                logprint(f"User {username} Deleted successfully")
                 EventLog.eventwrite(f"User {username} Deleted successfully")
                 permission = permissions[i]
                 permissions.remove(permission)
                 configuration.updateaccounts()
+                logprint("User deletion complete")
+                break
         try:
             for i in range(len(authusers)):
                 if authusers[i] == username:
-                    print("That user was logged on too, Signing him off")
+                    logprint("That user was logged on too, Signing him off")
                     ipaddr = authenticatedAddresses[i]
                     authenticatedAddresses.remove(ipaddr)
                     userspot = authusers[i]
                     authusers.remove(userspot)
-                    print("Success")
+                    logprint("Success")
         except:
-            print(f"Could not sign off {username}")
+            logprint(f"{username} was not logged in over http")
 
 
     def signout(username):
@@ -960,10 +1027,10 @@ class EiLO:
                     authenticatedAddresses.remove(ipaddr)
                     userspot = authusers[i]
                     authusers.remove(userspot)
-                    print(f"{username} signed out")
+                    logprint(f"{username} signed out")
                     EventLog.eventwrite(f"User {username} Signed out of HTTP")
         except:
-            print(f"Could not sign off {username}")
+            logprint(f"Could not sign off {username}")
         
 
     def getuserslist():
@@ -977,7 +1044,7 @@ class EiLO:
             else:
                 # first user
                 mainstring = f"{username}|eilo|"
-        print(mainstring)
+        logprint(mainstring)
         return mainstring 
     def getpermsuser(username,givevars=0):
         # get parsed string and vars of the 5 perms of a certain user ae
@@ -1016,7 +1083,7 @@ class EiLO:
                 #if users[i] == username:
 
                 #    theindex = i
-            print(mainstring)
+            logprint(mainstring)
             return mainstring
 
     def checkauth(ip,hasperm=""):
@@ -1031,7 +1098,7 @@ class EiLO:
         if ip in authenticatedAddresses and hasperm == "":
             return 1
         elif ip in authenticatedAddresses and hasperm != "":
-            print("perm check")
+            logprint("perm check")
             # first get the indexes
             for i in range(len(authenticatedAddresses)):
                 if ip == authenticatedAddresses[i]:
@@ -1039,22 +1106,22 @@ class EiLO:
                     authuserindex = i # ip addr maps into authusers
             for ae in range(len(users)):
                 testname = users[ae]
-                print("testname: ",testname)
-                print(authenticatedAddresses)
-                print(authusers)
-                print("ae: ",ae)
+                logprint("testname: ",testname)
+                logprint(authenticatedAddresses)
+                logprint(authusers)
+                logprint("ae: ",ae)
                 if userindex == -1:
                     if len(authusers) == 1:
                         if testname == authusers[0]:
                             # found the index
-                            print("Found userindex")
+                            logprint("Found userindex")
                             userindex = ae
                             permindex = ae
                     else:
                         for aee in range(len(authusers)): # check them one by one xd
                             if testname == authusers[aee]:
                                 # found the index
-                                print("Found userindex")
+                                logprint("Found userindex")
                                 userindex = ae
                                 permindex = ae
                             
@@ -1073,47 +1140,47 @@ class EiLO:
             # finally, check if has permission
             permstring = permissions[permindex]
             permstring = permstring.split(",")
-            print(permstring)
+            logprint(permstring)
             if permstring[perm] == "1":
                 # Permission!
-                print("checkauth(): perm applies!")
-                print("full permission list: ",permissions)
+                logprint("checkauth(): perm applies!")
+                logprint("full permission list: ",permissions)
                 return 1
             else:
                 # illegal attempt!
-                print("checkauth(): failure! user no perm!")
+                logprint("checkauth(): failure! user no perm!")
                 return 0
         else:
             return 0
 
     def usersession(ip,username):
-        print(f"Adding ip: {ip} to the list of authenticated sessions")
+        logprint(f"Adding ip: {ip} to the list of authenticated sessions")
         global authenticatedAddresses
         global authusers
         authenticatedAddresses.append(ip)
         authusers.append(username)
-        print("Session added")
+        logprint("Session added")
         EventLog.eventwrite(f"IP Address {ip} has been given a new session")
-        print(authenticatedAddresses)
+        logprint(authenticatedAddresses)
         time.sleep(3600)
         EventLog.eventwrite(f"Session for {ip} (username: {username}) has ended (timed out, 1hr, 3600 seconds)")
         # Session ended.
         authenticatedAddresses.remove(ip)
         authusers.remove(username)
-        print(authenticatedAddresses)
+        logprint(authenticatedAddresses)
 
     def casheuser(ip,username):
         printlog(f"IP Address {ip} was cashed into the system under the username: {username}")
         global authenticatedAddresses 
-        print(ip)
+        logprint(ip)
         if ip in authenticatedAddresses:
-            print(f"{ip} is already cashed!")
+            logprint(f"{ip} is already cashed!")
         else:
             auththread = threading.Thread(target=EiLO.usersession, args=(ip,username,))
             auththread.start()
 
     def testprint(st):
-        print(st)
+        logprint(st)
 
     def authenticateUser(ip,username="",password=""):
         global users
@@ -1132,12 +1199,12 @@ class EiLO:
                 paswfound = 1
             
         if userfound and paswfound == 1:
-            print("User logged in succesfully!")
+            logprint("User logged in succesfully!")
             EventLog.eventwrite(f"IP Address {ip} authenticated successfully")
             EiLO.casheuser(ip,username)
             return 1
         elif ip in authenticatedAddresses:
-            print("IP Address in auth list!")
+            logprint("IP Address in auth list!")
             return 1
         # Not logged in
         return 0
@@ -1183,8 +1250,10 @@ class EiLO:
 # Webserver Class
 class Serv(BaseHTTPRequestHandler):
     def log_request(self, code='-', size='-'):
-        # Modified version of log_request
-        self.log_message('"%s" %s %s',self.requestline, str(code), str(size))
+        # Modified version of 
+        global debug
+        if debug == 1:
+            self.log_message('"%s" %s %s',self.requestline, str(code), str(size))
 
     def do_GET(self):
         # globals
@@ -1197,7 +1266,7 @@ class Serv(BaseHTTPRequestHandler):
         global cliport
         global terminalport
         global mgmthostname
-        print(f"new message from {self.address_string()}")
+        logprint(f"new message from {self.address_string()}")
         if self.path == '/':
             self.path = '/index.html'
         allowed = EiLO.checkauth(self.address_string(),"http")
@@ -1227,11 +1296,11 @@ class Serv(BaseHTTPRequestHandler):
         try: 
             ae = f"{self.path}"
             ae = ae[1:]
-            print(ae)
-            print(self.path)
+            logprint(ae)
+            logprint(self.path)
             file_to_open = open(ae,'r').read()
             self.send_response(200)
-            #UserMangement.testprint("aeaaaaaa")
+            #UserMangement.testlogprint("aeaaaaaa")
         except:
             # custom urls 
             if self.path == "/overview.get":
@@ -1270,7 +1339,7 @@ class Serv(BaseHTTPRequestHandler):
                 self.send_response(200)
 
             elif self.path == "/tempscr.png":
-                print("screenshot request via http!")
+                logprint("screenshot request via http!")
                 if getpowerstate() == "ON":
                     time.sleep(2)
                     HostCommunication.getclientscreenshot()
@@ -1300,8 +1369,12 @@ class Serv(BaseHTTPRequestHandler):
             elif self.path == "/motd":
                 file_to_open = motd
                 self.send_response(200)
+            elif self.path == "/irc.exe":
+                file_to_open = open("IRC.exe",'rb').read()
+                self.send_response(200)
+
             elif self.path == "/smallinfo":
-                file_to_open = longcomputername
+                file_to_open = longcomputername + " -- " + computername
                 self.send_response(200)
             elif self.path == "/servername":
                 file_to_open = computername
@@ -1327,104 +1400,104 @@ class Serv(BaseHTTPRequestHandler):
     
 
     def do_POST(self):
-        print ("got a POST request.")
+        logprint ("got a POST request.")
         if self.path == '/login.html':
-            print("The POST request is for the login system.")
+            logprint("The POST request is for the login system.")
             content_length = int(self.headers['Content-Length'])
             post_data_bytes = self.rfile.read(content_length)
-            print("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
+            logprint("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
 
             post_data_str = post_data_bytes.decode("UTF-8")
             post_data_list = post_data_str.split("=")
-            print([post_data_list])
+            logprint([post_data_list])
 
             uname = post_data_list[1]
             unamestr1 = uname.split('"uname"\r\n\r\n')
-            print(f"\n\n{unamestr1}\n\n")
+            logprint(f"\n\n{unamestr1}\n\n")
             unamelist2 = unamestr1[1]
             uname2 = unamelist2.split("\r\n")
             unamemain = uname2[0]
-            print(f"\n\nUsername: |{unamemain}| - end username")
+            logprint(f"\n\nUsername: |{unamemain}| - end username")
             psw = post_data_list[2]
             pswstr1 = psw.split('"psw"\r\n\r\n')
-            print(f"\n\n{pswstr1}\n\n")
+            logprint(f"\n\n{pswstr1}\n\n")
             pswlist2 = pswstr1[1]
             psw2 = pswlist2.split("\r\n")
             pswmain = psw2[0]
-            print(f"\n\nPassword: |{pswmain}| - end password")
-            print(f"Login request from {self.address_string()}")
-            print(f"eilo{pswmain}eilo")
-            print(f"eilo{unamemain}eilo")
+            logprint(f"\n\nPassword: |{pswmain}| - end password")
+            logprint(f"Login request from {self.address_string()}")
+            logprint(f"eilo{pswmain}eilo")
+            logprint(f"eilo{unamemain}eilo")
             authenticated = EiLO.authenticateUser(self.address_string(),unamemain,pswmain)
             if authenticated == 1:
-                print("redirected!")
+                logprint("redirected!")
                 self.path = '/redir.html'
 
 
         # ports update
-        print ("got a POST request.")
+        logprint ("got a POST request.")
         if self.path == '/accessports.html':
             content_length = int(self.headers['Content-Length'])
             post_data_bytes = self.rfile.read(content_length)
-            print("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
+            logprint("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
 
             post_data_str = post_data_bytes.decode("UTF-8")
             post_data_list = post_data_str.split("=")
-            print([post_data_list])
+            logprint([post_data_list])
 #id="webserver
 #id="virtmedia
 #id="clientapp
 #id="remotecon
             webserver = post_data_list[1]
             webserverstr1 = webserver.split('"webserver"\r\n\r\n')
-            print(f"\n\n{webserverstr1}\n\n")
+            logprint(f"\n\n{webserverstr1}\n\n")
             webserverlist2 = webserverstr1[1]
             webserver2 = webserverlist2.split("\r\n")
             webservermain = webserver2[0]
-            print(f"\n\nwebserverport: |{webservermain}| - end port")
+            logprint(f"\n\nwebserverport: |{webservermain}| - end port")
             #psw = post_data_list[2]
             #pswstr1 = psw.split('"psw"\r\n\r\n')
-            #print(f"\n\n{pswstr1}\n\n")
+            #logprint(f"\n\n{pswstr1}\n\n")
             #pswlist2 = pswstr1[1]
             #psw2 = pswlist2.split("\r\n")
             #pswmain = psw2[0]
-            #print(f"\n\nPassword: |{pswmain}| - end password")
-            #print(f"Login request from {self.address_string()}")
-            #print(f"eilo{pswmain}eilo")
-            #print(f"eilo{unamemain}eilo")
+            #logprint(f"\n\nPassword: |{pswmain}| - end password")
+            #logprint(f"Login request from {self.address_string()}")
+            #logprint(f"eilo{pswmain}eilo")
+            #logprint(f"eilo{unamemain}eilo")
             #authenticated = EiLO.authenticateUser(self.address_string(),unamemain,pswmain)
             #if authenticated == 1:
-            #    print("redirected!")
+            #    logprint("redirected!")
             #    self.path = '/redir.html'
 
 
         if self.path == '/newuser.html':
             allowed = EiLO.checkauth(self.address_string(),"admin")
             if allowed == 1:
-                print("The POST request is for the login system.")
+                logprint("The POST request is for the login system.")
                 content_length = int(self.headers['Content-Length'])
                 post_data_bytes = self.rfile.read(content_length)
-                print("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
+                logprint("MY SERVER: The post data I received from the request has following data:\n", post_data_bytes)
 
                 post_data_str = post_data_bytes.decode("UTF-8")
                 post_data_list = post_data_str.split("=")
-                print([post_data_list])
-                print("Length of postdatalist: ",len(post_data_list))
+                logprint([post_data_list])
+                logprint("Length of postdatalist: ",len(post_data_list))
                 uname = post_data_list[1]
                 unamestr1 = uname.split('"uname"\r\n\r\n')
-                print(f"\n\n{unamestr1}\n\n")
+                logprint(f"\n\n{unamestr1}\n\n")
                 unamelist2 = unamestr1[1]
                 uname2 = unamelist2.split("\r\n")
                 unamemain = uname2[0]
-                print(f"\n\nUsername: |{unamemain}| - end username")
+                logprint(f"\n\nUsername: |{unamemain}| - end username")
 
                 psw = post_data_list[2]
                 pswstr1 = psw.split('"psw"\r\n\r\n')
-                print(f"\n\n{pswstr1}\n\n")
+                logprint(f"\n\n{pswstr1}\n\n")
                 pswlist2 = pswstr1[1]
                 psw2 = pswlist2.split("\r\n")
                 pswmain = psw2[0]
-                print(f"\n\nPassword: |{pswmain}| - end password")
+                logprint(f"\n\nPassword: |{pswmain}| - end password")
                 http = 0
                 irc  = 0
                 virt = 0
@@ -1434,67 +1507,67 @@ class Serv(BaseHTTPRequestHandler):
 
 
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: HTTP")
+                    logprint("Looking for perm: HTTP")
                     # find & check http perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"http"\r\n\r\n') # looking for "http"
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("HTTP perm is present!")
+                        logprint("HTTP perm is present!")
                         http = 1
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: IRC")
+                    logprint("Looking for perm: IRC")
                     # find & check irc perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"irc"\r\n\r\n')
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("IRC perm is present!")
+                        logprint("IRC perm is present!")
                         irc = 1
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: VIRT")
+                    logprint("Looking for perm: VIRT")
                     # find & check irc perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"virt"\r\n\r\n')
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("VIRT perm is present!")
+                        logprint("VIRT perm is present!")
                         virt = 1
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: pwer")
+                    logprint("Looking for perm: pwer")
                     # find & check virt perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"pwer"\r\n\r\n')
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("PWER perm is present!")
+                        logprint("PWER perm is present!")
                         pwer = 1
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: sett")
+                    logprint("Looking for perm: sett")
                     # find & check virt perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"sett"\r\n\r\n')
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("SETT perm is present!")
+                        logprint("SETT perm is present!")
                         sett = 1
                 for i in range(len(post_data_list) - 2): # sub user and pass
-                    print("Looking for perm: admin")
+                    logprint("Looking for perm: admin")
                     # find & check virt perm
                     perm = post_data_list[i + 2]
                     permstr1 = perm.split('"admin"\r\n\r\n')
-                    print(f"\n\nHeres the perm:\n{permstr1}\n\n")
-                    print(f"len of that perm!: {len(permstr1)}")
+                    logprint(f"\n\nHeres the perm:\n{permstr1}\n\n")
+                    logprint(f"len of that perm!: {len(permstr1)}")
                     if len(permstr1) > 1:
-                        print("ADMIN perm is present!")
+                        logprint("ADMIN perm is present!")
                         admin = 1
-                print("\nFinal permission list!")
-                print(f"HTTP: {http} | IRC: {irc} | VIRT: {virt} | PWER: {pwer} | SETT: {sett} | ADMIN: {admin}")
+                logprint("\nFinal permission list!")
+                logprint(f"HTTP: {http} | IRC: {irc} | VIRT: {virt} | PWER: {pwer} | SETT: {sett} | ADMIN: {admin}")
                 permstring = f"{http},{irc},{virt},{pwer},{sett},{admin}"
                 global users
                 global paswds
@@ -1502,17 +1575,17 @@ class Serv(BaseHTTPRequestHandler):
                 cancontinue = 1
                 for i in range(len(users)):
                     if users[i] == unamemain:
-                        print("This username is already taken!")
+                        logprint("This username is already taken!")
                         self.path = '/taken.html'
                         cancontinue = 0
                 if cancontinue == 1:
-                    print(f"\n\n\nCreating account: {unamemain}\n\nPermissions: {permstring}\n\n\n")
+                    logprint(f"\n\n\nCreating account: {unamemain}\n\nPermissions: {permstring}\n\n\n")
                     users.append(unamemain)
                     paswds.append(pswmain)
                     permissions.append(permstring)
-                    print("\n\naccounts updated:\n\n")
-                    print(users)
-                    print(paswds)
+                    logprint("\n\naccounts updated:\n\n")
+                    logprint(users)
+                    logprint(paswds)
 
                     time.sleep(2)
                     configuration.updateaccounts()
@@ -1521,23 +1594,23 @@ class Serv(BaseHTTPRequestHandler):
 
            #    http = post_data_list[3]
            #    httpstr1 = http.split('"http"\r\n\r\n')
-           #    print(f"\n\n{httpstr1}\n\n")
+           #    logprint(f"\n\n{httpstr1}\n\n")
            #    httplist2 = httpstr1[1]
            #    http2 = httplist2.split("\r\n")
            #    httpmain = http2[0]
-           #    print(f"\n\nHTTP perm: {httpmain} - end http perm")
+           #    logprint(f"\n\nHTTP perm: {httpmain} - end http perm")
 
-                #print(f"Login request from {self.address_string()}")
-                #print(f"eilo{pswmain}eilo")
-                #print(f"eilo{unamemain}eilo")
+                #logprint(f"Login request from {self.address_string()}")
+                #logprint(f"eilo{pswmain}eilo")
+                #logprint(f"eilo{unamemain}eilo")
                 #authenticated = EiLO.authenticateUser(self.address_string(),unamemain,pswmain)
                 #if authenticated == 1:
-                #    print("redirected!")
+                #    logprint("redirected!")
                 #    self.path = '/redir.html'
             else:
-                print("Someone tried to create a user without perms!")
+                logprint("Someone tried to create a user without perms!")
                 printlog(f"{self.address_string()} Attempted to create a user with insuffciant permissions")
-                print("redirected!")
+                logprint("redirected!")
                 self.path = '/unauth.html'
         return Serv.do_GET(self)
  
@@ -1582,8 +1655,8 @@ def remoteconsole(port):
         # get the hostname
         host = "0.0.0.0" # socket.gethostname()
         print("Starting Remote Console Server")
-        print(host)
-        print(port)
+        logprint(host)
+        logprint(port)
         rcusername = ""
         rcpassword = ""
         server_socket = socket.socket()  # get instance
@@ -1593,7 +1666,7 @@ def remoteconsole(port):
         # configure how many client the server can listen simultaneously
         server_socket.listen(2)
         conn, address = server_socket.accept()  # accept new connection
-        print("log: new remote console from: " + str(address))
+        logprint("log: new remote console from: " + str(address))
         # open a new connection!
         #newport = port + 1 # increase the next port by one so more connections can be made after
         #aex = threading.Thread(target=remoteconsole, args=(newport,))
@@ -1621,7 +1694,7 @@ def remoteconsole(port):
                                 index = i
                         
 
-                        message = f"NONE&&password for {thesplit[1]}: "
+                        message = f"NONEPASS&&password for {thesplit[1]}: "
                         conn.send(message.encode())
                         data = conn.recv(1024).decode() # Get response
                         datastr = str(data)
@@ -1630,28 +1703,28 @@ def remoteconsole(port):
                         if index == -1:
                             # no user account
                             conn.close()
-                            print("breaking...")
+                            logprint("breaking...")
                             break
                         
                         if str(rcpassword) == str(paswds[index]):
                             # check the permissions of the user
-                            print("that password works, getting permissions")
+                            logprint("that password works, getting permissions")
                             http,irca,virt,pwer,sett,admin = EiLO.getpermsuser(rcusername,1)
-                            print(f'IRCA:{irca}:IRCA')
+                            logprint(f'IRCA:{irca}:IRCA')
                             if irca == 1 or irca == "1" or irca == " 1" or irca == "1 " or irca == " 1 ":
                                 loggedin = 1 
-                                print("Remote console user authenticated successfully")
+                                logprint("Remote console user authenticated successfully")
                                 message = f"<{rcusername}>@{computername}_EiLO $ &&EiLO 3 build 188 at Dec 06 2025\nSystem Name: {computername}\nSystem Power: {getpowerstate()}\n&&cls"
                                 conn.send(message.encode())   
                             else: 
-                                print("no irc perm")
+                                logprint("no irc perm")
                                 message = f">&&Your user account does not have the nessory permissions to use the Remote Console\nPlease consult your Administrator&&exit"
                                 conn.send(message.encode())  
                     except Exception as e:
-                        print(f"Exception on remote console login\n{e}")
-                        print("A device disconnected! (From exception detect)")
+                        logprint(f"Exception on remote console login\n{e}")
+                        logprint("A device disconnected! (From exception detect)")
                         conn.close()
-                        print("Disconncted!!!")
+                        logprint("Disconncted!!!")
                         #aex = threading.Thread(target=remoteconsole, args=(port,))
                         #aex.start()
                         break
@@ -1659,9 +1732,9 @@ def remoteconsole(port):
             try:
                 data = conn.recv(1024).decode() # This line errors when a client disconnects.
             except:
-                print("A device disconnected! Device list cleared.")
+                logprint("A device disconnected! Device list cleared.")
                 conn.close()
-                print("Disconncted!!!")
+                logprint("Disconncted!!!")
                 #aex = threading.Thread(target=remoteconsole, args=(port,))
                 #aex.start()
                 break
@@ -1671,22 +1744,22 @@ def remoteconsole(port):
                 ae = 0
             if data != '':
                 if str(data) != "ae":
-                    print("\nRemote Console: from a client: " + str(data))
+                    logprint("\nRemote Console: from a client: " + str(data))
                     datastr = str(data)
                     thesplit = datastr.split("&&")
-                    print(f"datastr:{datastr}")
+                    logprint(f"datastr:{datastr}")
                     devicename = thesplit[0]
                     text = thesplit[1]
-                    print(thesplit)
+                    logprint(thesplit)
                     if thesplit[1] == " Command recived\n": # This is the message the device first sends. initing the sequense
-                        print(f"log: New device connected to remote console | {devicename}")
+                        logprint(f"log: New device connected to remote console | {devicename}")
                         isconnected = 1
                         # End here. go to login script at top
                     if loggedin == 1:
                         prompt, messageback = parsecommand(rcusername,thesplit[1])
 
-                        print(prompt)
-                        print(messageback)
+                        logprint(prompt)
+                        logprint(messageback)
                         message = f"{prompt}&&{messageback}"
                         conn.send(message.encode())   
                         if thesplit[1] == "exit":
@@ -1696,11 +1769,11 @@ def remoteconsole(port):
             while new == 1:
                 new = 0
             data = ''
-        print("Breaking out of that while loop #1")
+        logprint("Breaking out of that while loop #1")
         break
-    print("Out of the while loop!")
+    logprint("Out of the while loop!")
     conn.close()
-    print("remoteconsole() function thread exited successuflly!!")
+    logprint("remoteconsole() function thread exited successuflly!!")
     aex = threading.Thread(target=remoteconsole, args=(port,))
     aex.start()
 
@@ -1794,7 +1867,7 @@ class SysInfo:
                 if pingresult == 1:
                     powerstate = 3
                 else:
-                    print("Host System Offline!")
+                    logprint("Host System Offline!")
                     EventLog.eventwrite(f"Host System Offline!")
                     powerstate = 0
 
@@ -1802,18 +1875,18 @@ class SysInfo:
                 # Startup in progress...
                 if pingresult == 1:
                     powerstate = 1
-                    print("Host System Online!")
+                    logprint("Host System Online!")
                     EventLog.eventwrite(f"Host System Online!")
                 else:
                     powerstate = 2 # System bootup in progress
             if powerstate == 1: # System was on before
                 if pingresult == 0: # Cant reach it
-                    print("Host System Offline!")
+                    logprint("Host System Offline!")
                     EventLog.eventwrite(f"Host System Offline!")
                     powerstate = 0
             if powerstate == 0: # System was off before
                 if pingresult == 1: # Cant reach it
-                    print("Host System Online!")
+                    logprint("Host System Online!")
                     EventLog.eventwrite(f"Host System Online!")
                     powerstate = 1
 
@@ -1854,7 +1927,7 @@ print("PhnyAutoStart is currently disabled. To enable it, check out the autostar
 SysInfo.determineInitalPowerState()
 while True:
     print("--- INIT Local EiLO 3 Console Session ---")
-    pswd = str(input("EiLO3 password: "))
+    pswd = str(getpass("EiLO3 password: "))
     if pswd == password:
         print("")
         print("EiLO 3 build 190 at Feb 10 2026")

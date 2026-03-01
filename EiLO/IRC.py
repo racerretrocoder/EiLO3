@@ -1,4 +1,5 @@
 import socket, os, time, subprocess, requests, sys
+from getpass import getpass
 computername = os.environ['COMPUTERNAME']
 firsttime = 1
 
@@ -46,6 +47,15 @@ while True:
             print("Thats not a URL! Use http://")
         else:
             break
+    else:
+        url = str(input("\n> "))
+        if url == "ae":
+            break
+        if url.startswith("http") != 1:
+            clearscreen()
+            print("Thats not a URL! Use http://")
+        else:
+            break
 if url != "":
 
 
@@ -55,11 +65,23 @@ if url != "":
             f.writelines(ae)
             f.close()
     else:
-        # ae
-        print("Exited helper mode, entered ae mode.")
-        aemode = 1
-        aeip = input("IP_ADDR> ")
-        aeport = int(input("PORT> "))
+        # ae special ae prompt
+        clearscreen()
+        while True:
+            aemode = 1
+            ae = input("ae!> ")
+            if ae.startswith("conn ") or ae.startswith("conn"):
+                try:
+                    ae = ae.split("conn ")
+                    ae = ae[1]
+                    ae = ae.split(" ")
+                    aeip = ae[0]
+                    aeport = ae[1]
+                    break
+                except:
+                    print("conn <ipaddr> <port>")
+            if ae == "ae":
+                print("ae version 1.0\nThe ultimate ccli for your snek")
 
 if url == "":
     url = ae
@@ -129,12 +151,17 @@ def client_program():
 
             except:
                 ae = 0 # Do nothing
-            if fromserver[0] == "NONE":
+            if fromserver[0] == "NONEPASS":
+                # No prompt, input showing message
+                fromclient = str(getpass(f"{fromserver[1]}"))
+            elif fromserver[0] == "NONE":
                 # No prompt, input showing message
                 fromclient = str(input(f"{fromserver[1]}"))
+
             else:
                 # Server gives a CLI Prompt.
                 print(fromserver[1]) # show message in terminal
+                print("")
                 fromclient = str(input(f"{fromserver[0]}"))
             time.sleep(0.5)
 
