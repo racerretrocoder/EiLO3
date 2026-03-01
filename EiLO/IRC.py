@@ -1,6 +1,22 @@
-import socket, os, time, subprocess, requests
+import socket, os, time, subprocess, requests, sys
 computername = os.environ['COMPUTERNAME']
 firsttime = 1
+
+
+name = os.name
+def clearscreen():
+    global name
+    if name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+clearscreen()
+
+aemode = 0
+aeip = ""
+aeport = 0
+port = 0
+
 try:
     with open("irc.conf","r") as f:
         ae = f.read()
@@ -13,30 +29,53 @@ except:
     ae = "ae"
 
 
+
 # Integrated Remote Console
 print("EiLO3 Remote console\n")
-print("EiLO3 HTTP Server IP Address (or URL) followed by port (:port)\n e.g. http://10.0.0.150:8080")    
-if ae != "ae":
-    print(f"or press enter to use the previous session:\n{ae}")
-url = str(input("\n> "))
+while True:
+    print("EiLO3 HTTP Server IP Address (or URL) followed by port (:port)\n e.g. http://10.0.0.150:8080")    
+    if ae != "ae":
+        print(f"or press enter to use the previous session:\n{ae}")
+        url = str(input("\n> "))
+        if url == "ae":
+            break
+        if url == "":
+            break
+        if url.startswith("http") != 1:
+            clearscreen()
+            print("Thats not a URL! Use http://")
+        else:
+            break
 if url != "":
-    with open("irc.conf","w") as f:
-        ae = [url]
-        f.writelines(ae)
-        f.close()
+
+
+    if url != "ae":
+        with open("irc.conf","w") as f:
+            ae = [url]
+            f.writelines(ae)
+            f.close()
+    else:
+        # ae
+        print("Exited helper mode, entered ae mode.")
+        aemode = 1
+        aeip = input("IP_ADDR> ")
+        aeport = int(input("PORT> "))
+
 if url == "":
     url = ae
-
-print(f"Connecting to: {url}")
-x = requests.get(f"{url}/remo")
-port = int(x.text)
-#print("Found the port ae: ",port)
-if url.startswith("http://"):
-    ae = url.split("http://")
-    ae = ae[1]
-    ae = ae.split(":")
-    ipaddr = ae[0]
-#port = int(input("Enter the port to connect to (The default is 5000)\nPort: "))
+if aemode == 0:
+    print(f"Connecting to: {url}")
+    x = requests.get(f"{url}/remo")
+    port = int(x.text)
+    if url.startswith("http://"):
+        ae = url.split("http://")
+        ae = ae[1]
+        ae = ae.split(":")
+        ipaddr = ae[0]
+if aemode == 1:
+    print("aemode")
+    port = aeport
+    ipaddr = aeip
 
 
 def client_program():
@@ -56,8 +95,7 @@ def client_program():
             time.sleep(3)
             print("Ready! INIT Console")
             time.sleep(1)
-            os.system("clear")
-            os.system("cls")
+            clearscreen()
             break
         except Exception as e:
             time.sleep(1) # failed to connect
@@ -79,13 +117,15 @@ def client_program():
             # detect sys
             try:
                 if fromserver[2] == "cls":
-                    os.system("cls") 
+                    clearscreen()
                 if fromserver[2] == "exit":
                     print(fromserver[1])
                     time.sleep(0.5)
                     print("[==REMOTE SERVER CLOSED CONNECTION==]\n\n")
                     time.sleep(3)
                     client_socket.close()
+                    exit()
+                    sys.exit()
 
             except:
                 ae = 0 # Do nothing
@@ -98,7 +138,6 @@ def client_program():
                 fromclient = str(input(f"{fromserver[0]}"))
             time.sleep(0.5)
 
-        
             msgreturn = f"{computername}&&{fromclient}" # Must be different from "ae" and "Command recived"
             client_socket.send(msgreturn.encode()) # send it back             
         else:

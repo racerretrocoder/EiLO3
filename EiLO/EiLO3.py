@@ -12,6 +12,16 @@ import serial, os, requests, sys, time, socket, threading, datetime, platform, s
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 # For Windows # from pythonping import ping 
 
+name = os.name
+def clearscreen():
+    global name
+    if name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+clearscreen()
+
+
 
 # For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)
 # (You set this password during the inital setup when you run this script for the first time!)
@@ -169,8 +179,7 @@ if os.path.isfile("iloconfig.txt") != True:
     print("Now create a master password to keep EiLO secure (You will need this when accessing locally)")
     adminpass = input("password \n> ")
     print("Password accepted!")
-    os.system("clear")
-    os.system("cls")
+    clearscreen()
     print("Password accepted")
     print("Enter the port number for remote terminal/console sessions (Default is 5000)")
     while True:
@@ -186,15 +195,13 @@ if os.path.isfile("iloconfig.txt") != True:
     token = str(input("> "))
     if token == "":
         token = "NONE"
-    os.system("clear")
-    os.system("cls")
+    clearscreen()
     print("OPTIONAL: Enter in a discord webhook to send Logs and other information to")
     print("To skip this: Simply press [ENTER]")
     weburl = str(input("> "))
     if weburl == "":
         weburl = "NONE"
-    os.system("clear")
-    os.system("cls")
+    clearscreen()
 
     print("Enter the static IP Address of the system EiLO 3 is connected to. (This is to determine power status)")
     ipaddress = str(input("> "))
@@ -206,8 +213,7 @@ if os.path.isfile("iloconfig.txt") != True:
     cliport = str(input("> "))
     print("Enter a baud rate which the serial connection to the controller uses (default is 9600)")
     baud = str(input("> "))
-    os.system("clear")
-    os.system("cls")
+    clearscreen()
     motd = "This is a private system. It is to be used solely by authorized users and may be monitored for all lawful purposes. By accessing this system, you are consenting to such monitoring."
     print("Great, all set!")
     print("Saving settings to iloconfig.txt - Please wait...")
@@ -778,7 +784,7 @@ def automatedserial(input):
 #     try:
 #         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-#         sock.bind(('0.0.0.0', port))
+#         (('0.0.0.0', port))
 #         sock.listen(100)
 #         print(f'SSH running on :{port}...')
 #     except Exception as e:
@@ -1576,12 +1582,11 @@ def remoteconsole(port):
         # get the hostname
         host = "0.0.0.0" # socket.gethostname()
         print("Starting Remote Console Server")
-        #print(host)
-        #print(port)
+        print(host)
+        print(port)
         rcusername = ""
         rcpassword = ""
         server_socket = socket.socket()  # get instance
-        # look closely. The bind() function takes tuple as argument  
         global devconsetup
         server_socket.bind((host, port))  # bind host address and port together
         devconsetup = 1
