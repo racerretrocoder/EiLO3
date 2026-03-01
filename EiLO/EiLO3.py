@@ -56,13 +56,16 @@ class configuration:
         print(mainstring)
         return mainstring
 
-    def readiloconfig(): # config reader
+    def readiloconfig(newline=0): # config reader
         configarray = []
         fn = "iloconfig.txt"
         with open(fn) as f:
             for line in f:
-                new = line.split("\n")
-                configarray.append(new[0])
+                if newline == 0:
+                    new = line.split("\n")
+                    configarray.append(new[0])
+                else:
+                    configarray.append(line)
         EventLog.eventwrite("Read configuration successfully")
         return configarray # outputs array xd
     
@@ -80,10 +83,12 @@ class configuration:
                     f.seek(0)
                     f.write("") # Erase the file
                     f.writelines(d[:i]) # Restore the file
+                    print(configuration.accountrebuild())
                     f.write(f"{configuration.accountrebuild()}") # Rebuild the newest account hiarchy
             # success?
             if foundit == 1:
                 print("Success in updating users!")
+                # clean up the end of the file
             else:
                 # append WEBACCESS to the bottom of the config and rerun
                 f.write("WEBACCESS\n")
@@ -403,7 +408,12 @@ def parsecommand(username, cmd):
     global computername
     global powerstate
     global motd
+    global authusers
+    global users
+    global paswds
+    global permissions
     if cmd == "help":
+        print("ae")
         return f"<{username}>@{computername}_EiLO $ ","&&iLO help\npower <type>      Performs an action on the Power Button\n  |---power momentary   Press the Power button once\n  |---power hold        Press and hold the Power button for 5 seconds (Will force shutdown)\n  |---power coldboot    Power hold followed by momentary. Resulting in a cold boot\n  |---power reset       Reset the system\nMore commands coming soon."
     if cmd == "power on":
         writeserialdata(b"A")
@@ -429,31 +439,96 @@ def parsecommand(username, cmd):
         return f"<{username}>@{computername}_EiLO $ ", "Server reset"
     if cmd == "config":
         doconfig(0)
-
-    if cmd == "config motd":
-        print("Enter a new Message of the Day banner (MOTD) to display on the login screen")
-        msg = input("> ")
-        settings = configuration.readiloconfig()
-        index = len(settings) - 1
-        print(f"Will overwrite the following message: {settings[index]}\nIs this Ok?")
-        ae = input("(y/n) > ")
-        if ae == "n" or ae == "":
-            print("Canceled.")
-            time.sleep(1)
-            return "The operation was canceled by the user. Returned to CLI"
+        return f"<{username}>@{computername}_EiLO $ ", "ae"
+    if cmd == "show users http":
+        thestring = "Currently active user sessions on HTTP:\n"
+        for i in range(len(authusers)):
+            thestring = thestring + f"{authusers[i]}\n"
+            print(thestring)
+        return f"<{username}>@{computername}_EiLO $ ", thestring
+    if cmd == "show users":
+        thestring = "Current users registered into EiLO:\n"
+        for i in range(len(users)):
+            thestring = thestring + f"Username: {users[i]} - Permissions: {permissions[i]}\n"
+            print(thestring)
+        return f"<{username}>@{computername}_EiLO $ ", thestring
+    # now for config commands
+    if cmd.startswith("create user"):
+        http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
+        print("admin:",admin)
+        if admin == 1 or admin == "1" or admin == " 1" or admin == "1 " or admin == " 1 ":
+            try:
+                ae = cmd.split("create user")
+                ae = ae[1]
+                ae = ae.split(" ")
+                print(ae[1]) # un
+                print(ae[2]) # pw
+                print(ae[3]) # pm
+                unamemain = ae[1]
+                pswmain = ae[2]
+                permstring = ae[3]
+                # create the user
+                cancontinue = 1
+                for i in range(len(users)):
+                    if users[i] == unamemain:
+                        return f"<{username}>@{computername}_EiLO $ ", f"ERROR: The account: {unamemain} already exists"
+                        cancontinue = 0
+                if cancontinue == 1:
+                    users.append(unamemain)
+                    paswds.append(pswmain)
+                    permissions.append(permstring)
+                    print("\n\naccounts updated:\n\n")
+                    print(users)
+                    print(paswds)
+                    time.sleep(2)
+                    configuration.updateaccounts()
+                    return f"<{username}>@{computername}_EiLO $ ", f"Successfully created a new user under the username of {ae[1]}\nNote: It may take up to 30 seconds for the changes to apply globally"
+            except:
+                return f"<{username}>@{computername}_EiLO $ ", "create user <username> <password> <permission-string>\nExample of a permission string: 1,1,1,0,0,0\nAccess to HTTP, Access to Remote Console, Access to Virtual Media, Access to Power button controls, Can change EiLO Settings, Can Administrate Users"
         else:
-            with open("iloconfig.txt", 'w') as file:
-                settings[index] = msg
-                print(settings[index])
-                file.writelines(settings)
-                file.close()
-            print("Configuration updated successfully, Changes will take effect immdiately")
-            motd = msg
-            return "The command completed succesfully"
+            return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Insuffciant Permissions\nYour account {username} does not have the required permissions to administor EiLO user accounts to the server"
 
+    if cmd.startswith("delete user ") == 1:
+        http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
+        print("admin:",admin)
+        if admin == 1 or admin == "1" or admin == " 1" or admin == "1 " or admin == " 1 ":
+            ae = cmd.split("delete user ")
+            ae = ae[1]
+            print(f"request over remote console to delete user: {ae}")
+            ae = ae.replace(" ","")
+            EiLO.deleteuser(ae)
+            return f"<{username}>@{computername}_EiLO $ ", f"Successfully deleted user: {ae}"
+
+        else:
+            return f"<{username}>@{computername}_EiLO $ ", f"ERROR: Insuffciant Permissions\nYour account {username} does not have the required permissions to administor EiLO user accounts to the server"
+
+
+
+    if cmd.startswith("config motd") == 1:
+        ae = cmd.split("config motd")
+        newmotd = f"{ae[1]}\n"
+        newmotd = newmotd.replace(r"\n","\n")
+        if newmotd.startswith(" ") == 1:
+            newmotd = newmotd[1:]
+        settings = configuration.readiloconfig(1)
+        index = 9
+        with open("iloconfig.txt", 'w') as file:
+            settings[index] = newmotd
+            print("new config:",settings)
+            print("\nnew MOTD:",settings[index]) 
+            global motd
+            motd = newmotd
+            file.writelines(settings)
+            file.close()
+            return f"<{username}>@{computername}_EiLO $ ", f"Successfully changed MOTD"
+           
+
+    if cmd == "exit":
+        return f"<{username}>@{computername}_EiLO $ ", f"Ending Remote Console Connection&&exit"
 
     else:
-        return f"<{username}>@{computername}_EiLO $ ", "Command Processing Failed."    
+        return f"<{username}>@{computername}_EiLO $ ", "\nstatus=0\nCommand Processing Failed.\n"    
+
 
 
 # some help displays
@@ -837,6 +912,7 @@ class EiLO:
         return ip
     
     def deleteuser(username):
+        print("Deleting: ",username)
         global users
         global paswds
         global permissions
@@ -854,6 +930,7 @@ class EiLO:
                 EventLog.eventwrite(f"User {username} Deleted successfully")
                 permission = permissions[i]
                 permissions.remove(permission)
+                configuration.updateaccounts()
         try:
             for i in range(len(authusers)):
                 if authusers[i] == username:
@@ -1119,7 +1196,7 @@ class Serv(BaseHTTPRequestHandler):
             self.path = '/index.html'
         allowed = EiLO.checkauth(self.address_string(),"http")
         # Auth check
-        if self.path != '/index.html' and self.path != '/' and self.path != '/login.html' and self.path != '/motd' and self.path != '/smallinfo':
+        if self.path != '/index.html' and self.path != '/' and self.path != '/login.html' and self.path != '/motd' and self.path != '/smallinfo' and self.path != '/remo':
             if allowed == 0:
                 self.path = '/unauth.html'
                 self.send_response(401)
@@ -1487,6 +1564,8 @@ connected = 1
 # [0] is the prompt
 # [1] is the reset of the message
 
+
+# Todo: Improve this function to accept more connections keeping port chanaging a minimum
 def remoteconsole(port):
     print(f"\nRemote Console Port: {port}")
     loggedin = 0
@@ -1495,10 +1574,10 @@ def remoteconsole(port):
     global computername
     while True:
         # get the hostname
-        host = socket.gethostname()
+        host = "0.0.0.0" # socket.gethostname()
         print("Starting Remote Console Server")
-        print(host)
-        print(port)
+        #print(host)
+        #print(port)
         rcusername = ""
         rcpassword = ""
         server_socket = socket.socket()  # get instance
@@ -1511,9 +1590,9 @@ def remoteconsole(port):
         conn, address = server_socket.accept()  # accept new connection
         print("log: new remote console from: " + str(address))
         # open a new connection!
-        newport = port + 1 # increase the next port by one so more connections can be made after
-        aex = threading.Thread(target=remoteconsole, args=(newport,))
-        aex.start()
+        #newport = port + 1 # increase the next port by one so more connections can be made after
+        #aex = threading.Thread(target=remoteconsole, args=(newport,))
+        #aex.start()
         while True:
             new = 0
             # if this is the second loop:
@@ -1526,25 +1605,62 @@ def remoteconsole(port):
                         datastr = str(data)
                         thesplit = datastr.split("&&")
                         rcusername = thesplit[1]
+                        # === new! ===
+                        # convert to useraccount system
+                        index = -1
+                        global users
+                        global paswds
+                        for i in range(len(users)):
+                            if users[i] == rcusername:
+                                # user exists!!
+                                index = i
+                        
+
                         message = f"NONE&&password for {thesplit[1]}: "
                         conn.send(message.encode())
                         data = conn.recv(1024).decode() # Get response
                         datastr = str(data)
                         thesplit = datastr.split("&&")
                         rcpassword = thesplit[1]
-                        if str(rcpassword) == str(password):
-                            loggedin = 1 
-                            print("Remote console user authenticated successfully")
-                            message = f"<{rcusername}>@{computername}_EiLO $ &&EiLO 3 build 188 at Dec 06 2025\nSystem Name: {computername}\nSystem Power: Unknown\n&&cls"
-                            conn.send(message.encode())   
+                        if index == -1:
+                            # no user account
+                            conn.close()
+                            print("breaking...")
+                            break
+                        
+                        if str(rcpassword) == str(paswds[index]):
+                            # check the permissions of the user
+                            print("that password works, getting permissions")
+                            http,irca,virt,pwer,sett,admin = EiLO.getpermsuser(rcusername,1)
+                            print(f'IRCA:{irca}:IRCA')
+                            if irca == 1 or irca == "1" or irca == " 1" or irca == "1 " or irca == " 1 ":
+                                loggedin = 1 
+                                print("Remote console user authenticated successfully")
+                                message = f"<{rcusername}>@{computername}_EiLO $ &&EiLO 3 build 188 at Dec 06 2025\nSystem Name: {computername}\nSystem Power: {getpowerstate()}\n&&cls"
+                                conn.send(message.encode())   
+                            else: 
+                                print("no irc perm")
+                                message = f">&&Your user account does not have the nessory permissions to use the Remote Console\nPlease consult your Administrator&&exit"
+                                conn.send(message.encode())  
                     except Exception as e:
                         print(f"Exception on remote console login\n{e}")
+                        print("A device disconnected! (From exception detect)")
+                        conn.close()
+                        print("Disconncted!!!")
+                        #aex = threading.Thread(target=remoteconsole, args=(port,))
+                        #aex.start()
+                        break
             # receive data stream. it won't accept data packet greater than 1024 bytes
             try:
                 data = conn.recv(1024).decode() # This line errors when a client disconnects.
             except:
                 print("A device disconnected! Device list cleared.")
-                raise Exception
+                conn.close()
+                print("Disconncted!!!")
+                #aex = threading.Thread(target=remoteconsole, args=(port,))
+                #aex.start()
+                break
+
             if not data:
                 # if data is not received break
                 ae = 0
@@ -1563,15 +1679,25 @@ def remoteconsole(port):
                         # End here. go to login script at top
                     if loggedin == 1:
                         prompt, messageback = parsecommand(rcusername,thesplit[1])
+
                         print(prompt)
                         print(messageback)
                         message = f"{prompt}&&{messageback}"
                         conn.send(message.encode())   
+                        if thesplit[1] == "exit":
+                            time.sleep(1)
+                            conn.close()
             new = 1
             while new == 1:
                 new = 0
             data = ''
-
+        print("Breaking out of that while loop #1")
+        break
+    print("Out of the while loop!")
+    conn.close()
+    print("remoteconsole() function thread exited successuflly!!")
+    aex = threading.Thread(target=remoteconsole, args=(port,))
+    aex.start()
 
 print("Starting Remote Console Server...")
 telnet = threading.Thread(target=remoteconsole, args=(5000,))
@@ -1581,11 +1707,9 @@ telnet.start()
 token = dct
 import discord, asyncio, os, time
 from discord.ext import commands
-
 loop = asyncio.get_event_loop()
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix='.', intents=intents)
 @bot.command()
 async def commandlist(ctx, *args):
