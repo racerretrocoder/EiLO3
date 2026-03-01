@@ -1700,7 +1700,7 @@ def remoteconsole(port):
     aex.start()
 
 print("Starting Remote Console Server...")
-telnet = threading.Thread(target=remoteconsole, args=(5000,))
+telnet = threading.Thread(target=remoteconsole, args=(terminalport,))
 telnet.start()
 
 # Discord
