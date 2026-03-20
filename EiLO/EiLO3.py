@@ -700,7 +700,7 @@ def command(): # This is locally
         global localip
         print("Determining Host Status...")
         print(f"{getpowerstate()}")
-        pingresult = SysInfo.pinghost(6) # try to contact the host 6 times
+        pingresult = SysInfo.pinghost(4) # try to contact the host 6 times
         if pingresult == 1:
             print("EiLO 3 detected that the Host System is ON. It can be pinged!")
         else:
@@ -1860,7 +1860,8 @@ class SysInfo:
             time.sleep(5)
             # This function is to determine when the Server is on and when its not on.
             # Ping the system
-            pingresult = SysInfo.pinghost()
+            if powerstate != 0: # prevent it from waking when sleep
+                pingresult = SysInfo.pinghost()
             #print(powerstate)
             if powerstate == 3:
                 # Shutdown in progress
