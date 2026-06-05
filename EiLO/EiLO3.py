@@ -1,17 +1,34 @@
 # Externally Integrated Lights Out (EiLO) Verion 3.0
-# Build 190, Febuary 20th 2026
-# Copyright (c) 2025 - 2026, Backdoor Interactive, Phoenix
+# Build 200, Febuary 20th 2026
+# ae (ae) 2025 - 2026, Backdoor Interactive, Phoenix
+# New discord server! https://discord.gg/JpvPktde8H
+# Join it if you would like me to show you how to setup EiLO or if you just wanna demo it on one of my systems!
 
 # This is the main EiLO 3 Program. Its ment to be ran on a small linux computer. (Preferably a raspberry pi)
 # Future ideas: Make an effort to allow for windows serial communcation to the controller instead
 # Recomended python version: 3.8.8
-
 # If you ever want to try this software out, Or if you need help setting it up. Ask me, id love to help
 
-import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess
+import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess, hashlib, math
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from getpass import getpass
-# For Windows # from pythonping import ping 
+# Ping tool For Windows # from pythonping import ping 
+
+#
+# NEW! EiLO is now compatible with HIDPi!! Its a really awesome project
+# Note this is only available to pi 3 and 4 (or if you have a zero)
+#
+
+HID = 0
+print("Would you like to use HIDPi? The HID Keyboard and Mouse Driver for RPi's 4 and up?")
+print("Check out HIDPi on github here! Its awesome. https://github.com/rikka-chunibyo/HIDPi/")
+ae = input("[y\n] > ")
+if ae == "y":
+    from hidpi import Keyboard, Mouse
+    from hidpi.keyboard_keys import *
+    from hidpi.mouse_buttons import *
+    print("HIDPi Enabled!")
+    HID = 1
 
 name = os.name
 def clearscreen():
@@ -32,10 +49,6 @@ def logprint(message,option=""):
             print(message)
     else:
         ae = 1 # print("ae")
-
-
-
-
 
 
 # For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)"
@@ -217,7 +230,6 @@ if os.path.isfile("iloconfig.txt") != True:
     if weburl == "":
         weburl = "NONE"
     clearscreen()
-
     print("Enter the static IP Address of the system EiLO 3 is connected to. (This is to determine power status)")
     ipaddress = str(input("> "))
     print("Enter a port to host the webserver on (Recomended default is 8080)")
@@ -242,7 +254,7 @@ if os.path.isfile("iloconfig.txt") != True:
     exit()
 else:
     config = configuration.readiloconfig()
-    print("Externally Integrated Lights-Out Version 3.0 (Build 1.90, Feb 20th 2026)\nLoading configuration...")
+    print("Externally Integrated Lights-Out Version 3.0 (Build 2.00, Jun 5 2026)\nLoading configuration...")
     time.sleep(0.7)
     password = config[3] # Password to access controls
     computername = config[0] # A custom name that you like to call the remote system
@@ -312,7 +324,7 @@ def printlog(message):
         "username": "EiLO 3 Logs", 
         "content": "*New log message*", 
         "embeds": [{ 
-        "title": "Externally-Integrated Lights-Out 3.0 *(build 190)*",
+        "title": "Externally-Integrated Lights-Out 3.0 *(build 200)*",
         "description": message 
         }]
     }
@@ -1087,6 +1099,7 @@ class EiLO:
             return mainstring
 
     def checkauth(ip,hasperm=""):
+        # TODO, Clean these up for bugs
         global authenticatedAddresses
         global authusers
         global permissions
@@ -1124,7 +1137,6 @@ class EiLO:
                                 logprint("Found userindex")
                                 userindex = ae
                                 permindex = ae
-                            
             if hasperm == "http":
                 perm = 0
             if hasperm == "irc":
@@ -1197,7 +1209,6 @@ class EiLO:
         for i in range(amntpasw): 
             if password == paswds[i]:
                 paswfound = 1
-            
         if userfound and paswfound == 1:
             logprint("User logged in succesfully!")
             EventLog.eventwrite(f"IP Address {ip} authenticated successfully")
@@ -1209,6 +1220,7 @@ class EiLO:
         # Not logged in
         return 0
     
+    # Primary Power Functions (PPF)
     def powermomentary(ip):
         perm = EiLO.checkauth(ip,"pwer")
         if perm == 1:
@@ -1302,7 +1314,30 @@ class Serv(BaseHTTPRequestHandler):
             self.send_response(200)
             #UserMangement.testlogprint("aeaaaaaa")
         except:
-            # custom urls 
+            # custom urls
+
+            # Keyboard API
+            if "/keyboard?" in self.path:
+                try:
+                    keyinput = self.path
+                    keyinput = keyinput.split("?")
+                    # '/keyboard?' is [0]
+                    # modifiers are [1]
+                    # the actual key is [2]
+                    # example url1: /keyboard?ctrl&alt?del
+                    # example url2: /keyboard?n?a
+                    modifier = keyinput[1]
+                    if modifier != "n":
+                        modifier = modifier.split("&")
+                    else:
+                        modifier = []
+                    keypress = keyinput[2]
+                    HID.sendkeytext(keypress,modifier)
+                except Exception as ae:
+                    print("error in hid http " + ae)
+                file_to_open = "OK"
+                self.send_response(200)
+
             if self.path == "/overview.get":
                 cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpu = HostCommunication.getclientinfo()
                 fullstring = f"{cpu}|{os}|{release}|{build}|{hostname}|{cores}|{procid}|{arch}|{percentram}|{totalram}|{usagecpu}|{computername}|{longcomputername}|{localip}"
@@ -1391,7 +1426,7 @@ class Serv(BaseHTTPRequestHandler):
 
             else:
                 file_to_open = "File not found"
-                self.send_response(404)
+                self.send_response(200) # There is a reason why this isnt 404. It prevents proxy/VPN servers from displying there "custom erorr page"... I hate Proxy servers.
         self.end_headers()
         try:
             self.wfile.write(bytes(file_to_open, 'utf-8'))
@@ -1916,22 +1951,90 @@ class SysInfo:
         powerloop.start()
 
 
+class HID:
+    # HIDPi
+    # Custom HID Keyboard Driver
+    # Expanded keyboard_keys Maps
+    # This is to be integrated with the HTTP server
+
+        # simple stuff
+    def sendtext(text): # RDPWeb Style "Send text to remote machine"
+        Keyboard.send_text(text, delay=0.25)
+        logprint(f"Keyboard sent: {text}")
+
+    # BEGIN SHOUTY CAPS VARIABLES!!!!!!!!!!!!!!! (SCREAM WHEN YOU READ THIS COMMENT XD)
+    KEY_DELETE = 0x4c
+    KEY_WIN = 0x5B # left
+    KEY_SUPER = 0x5B # left
+    
+    # extra keymapps
+    KEY_MAPPINGS_SPECIAL = {
+        # delete
+        'del': KEY_DELETE, # used for loging in, control alternitive delete
+        'bs': KEY_BACKSPACE,
+        # control
+        'shift': KEY_LEFT_SHIFT,
+        'ctrl': KEY_LEFT_CTRL,
+        'alt': KEY_LEFT_ALT,
+        'super': KEY_SUPER, # there the same, use for "compatiblity"
+        'win': KEY_WIN,     # there the same, use for "compatiblity"
+        # function row
+        'esc': KEY_ESC, 
+        'f1': KEY_F1,
+        'f2': KEY_F2, 
+        'f3': KEY_F3, 
+        'f4': KEY_F4, 
+        'f5': KEY_F5, 
+        'f6': KEY_F6, 
+        'f7': KEY_F7, 
+        'f8': KEY_F8, 
+        'f9': KEY_F9, 
+        'f10': KEY_F10, 
+        'f11': KEY_F11, 
+        'f12': KEY_F12
+    }
+
+    def keytokey(key): # this combines the 2 key mappings
+        try:
+            try:
+                # keyboard!!! :D
+                keycode = KEY_MAPPINGS[key]
+            except:
+                # ooo look!!! a shiny special key
+                keycode = KEY_MAPPINGS_SPECIAL[key]
+            return keycode
+        except:
+            logprint(f"Thats not a keycode! {key}")
+
+    def sendkeytext(keytext,control=[]):
+        hasmod = 0
+        if control != []:
+            # Special keys to hold aswell
+            hasmod = 1
+            for ae in range(len(control)):
+                Keyboard.hold_key(0, control[ae])
+        key = keytokey(keytext)
+        Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
+        logprint("Key(s) sent")
+        if hasmod:
+            Keyboard.release_keys()
+    
+
+
+# Now Main Code. (NMC)
 # Live Console Session
 
 printlog(f"{computername} | New EiLO Console Session Initiated")
-
-
-
 phnyautostartThread = threading.Thread(target=phnyautostart, args=())
 phnyautostartThread.start()
 print("PhnyAutoStart is currently disabled. To enable it, check out the autostart command")
 SysInfo.determineInitalPowerState()
 while True:
     print("--- INIT Local EiLO 3 Console Session ---")
-    pswd = str(getpass("EiLO3 password: "))
+    pswd = str(getpass("Password for [Administrator] > "))
     if pswd == password:
         print("")
-        print("EiLO 3 build 190 at Feb 10 2026")
+        print("EiLO 3 build 200 at Jun 5 2026")
         print("Welcome back, Administrator!")
         print(f"System Name: {computername}")
         print(f"System Power: {getpowerstate()}")
@@ -1944,3 +2047,4 @@ while True:
         time.sleep(3)
         print("Password Failure")
         printlog(f"{computername} | Local Console | Password Failure Log: {pswd}")
+# EOF
