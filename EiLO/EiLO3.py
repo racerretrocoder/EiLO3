@@ -2014,7 +2014,7 @@ class HID:
             # Special keys to hold aswell
             hasmod = 1
             for ae in range(len(control)):
-                Keyboard.hold_key(0, control[ae])
+                Keyboard.hold_key(0, KEY_MAPPINGS_SPECIAL[control[ae]])
         key = HID.keytokey(keytext)
         Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
         logprint("Key(s) sent")
