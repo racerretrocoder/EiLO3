@@ -20,15 +20,15 @@ from getpass import getpass
 #
 
 HID = 0
-print("Would you like to use HIDPi? The HID Keyboard and Mouse Driver for RPi's 4 and up?")
 print("Check out HIDPi on github here! Its awesome. https://github.com/rikka-chunibyo/HIDPi/")
-ae = input("[y\n] > ")
-if ae == "y":
+try:
     from hidpi import Keyboard, Mouse
     from hidpi.keyboard_keys import *
     from hidpi.mouse_buttons import *
     print("HIDPi Enabled!")
     HID = 1
+except:
+    ae = 0
 
 name = os.name
 def clearscreen():
@@ -1319,6 +1319,8 @@ class Serv(BaseHTTPRequestHandler):
             # Keyboard API
             if "/keyboard?" in self.path:
                 try:
+                    file_to_open = "ae"
+                    self.send_response(200)
                     keyinput = self.path
                     keyinput = keyinput.split("?")
                     # '/keyboard?' is [0]
@@ -1334,9 +1336,9 @@ class Serv(BaseHTTPRequestHandler):
                     keypress = keyinput[2]
                     HID.sendkeytext(keypress,modifier)
                 except Exception as ae:
-                    print("error in hid http " + ae)
-                file_to_open = "OK"
-                self.send_response(200)
+                    print("error in hid http " + str(ae))
+                printlog("http: keyboard API done!")
+
 
             if self.path == "/overview.get":
                 cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpu = HostCommunication.getclientinfo()
@@ -2001,7 +2003,7 @@ class HID:
                 keycode = KEY_MAPPINGS[key]
             except:
                 # ooo look!!! a shiny special key
-                keycode = KEY_MAPPINGS_SPECIAL[key]
+                keycode = HID.KEY_MAPPINGS_SPECIAL[key]
             return keycode
         except:
             logprint(f"Thats not a keycode! {key}")
@@ -2013,7 +2015,7 @@ class HID:
             hasmod = 1
             for ae in range(len(control)):
                 Keyboard.hold_key(0, control[ae])
-        key = keytokey(keytext)
+        key = HID.keytokey(keytext)
         Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
         logprint("Key(s) sent")
         if hasmod:
