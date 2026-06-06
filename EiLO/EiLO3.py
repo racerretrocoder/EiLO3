@@ -1337,7 +1337,7 @@ class Serv(BaseHTTPRequestHandler):
                     HID.sendkeytext(keypress,modifier)
                 except Exception as ae:
                     print("error in hid http " + str(ae))
-                printlog("http: keyboard API done!")
+                logprint("http: keyboard API done!")
 
 
             if self.path == "/overview.get":
@@ -2014,16 +2014,15 @@ class HID:
             # Special keys to hold aswell
             hasmod = 1
             for ae in range(len(control)):
-                Keyboard.hold_key(0, KEY_MAPPINGS_SPECIAL[control[ae]])
+                controlkey = HID.keytokey(control[ae])
+                Keyboard.hold_key(0, KEY_MAPPINGS_SPECIAL[controlkey])
         key = HID.keytokey(keytext)
         Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
-        logprint("Key(s) sent")
+        logprint("sendkeytext(): Keys sent!")
         if hasmod:
             Keyboard.release_keys()
     
-
-
-# Now Main Code. (NMC)
+# Now Main Code (NMC)
 # Live Console Session
 
 printlog(f"{computername} | New EiLO Console Session Initiated")
