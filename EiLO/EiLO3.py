@@ -1375,7 +1375,7 @@ class Serv(BaseHTTPRequestHandler):
         allowed = EiLO.checkauth(self.address_string(),"http")
         # Auth check
         if self.path != '/index.html' and self.path != '/' and self.path != '/login.html' and self.path != '/motd' and self.path != '/smallinfo' and self.path != '/remo':
-            if allowed == 1:
+            if allowed == 0:
                 self.path = '/unauth.html'
                 self.send_response(401)
                # printlog(f"Unauthorized (401) was given out to: {self.address_string()}")
