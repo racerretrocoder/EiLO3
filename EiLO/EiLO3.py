@@ -2153,16 +2153,16 @@ class HID:
         if dn:
             if ae == 1:
                 logprint("Click left")
-                Mouse.click(ae, hold=0.1):
+                Mouse.click(ae, hold=0.1)
             if ae == 2:
                 logprint("Click right")
-                Mouse.click(ae, hold=0.1):
+                Mouse.click(ae, hold=0.1)
             if ae == 3:
                 logprint("Click both")
-                Mouse.click(ae, hold=0.1):
+                Mouse.click(ae, hold=0.1)
             if ae == 4:
                 logprint("Click middle")    
-                Mouse.click(ae, hold=0.1):    
+                Mouse.click(ae, hold=0.1)  
 
 
 # Now Main Code (NMC)
