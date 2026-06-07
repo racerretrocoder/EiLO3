@@ -494,7 +494,7 @@ def parsecommand(username, cmd, conn, sock):
         logprint("RT: INIT VIDEO!")
         IRC.handshake(conn,sock)
         printlog(f"Integrated Remote Console started by {username}")
-        return f"<{username}>@{computername}_EiLO $ ", "\nIntegrated Remote Console session ended.\nYou have been returned to the terminal."
+        #return f"<{username}>@{computername}_EiLO $ ", "\nIntegrated Remote Console session ended.\nYou have been returned to the terminal."
     if cmd.startswith("irc"):
         logprint("RT: INIT VIDEO!")
         IRC.handshake(conn,sock)
@@ -1023,7 +1023,6 @@ class IRC:
         global WIDTH
         global HEIGHT
         # ctypes.windll.user32.SetProcessDPIAware(1)
-
         with mss() as sct:
             # The region to capture
             rect = {'top': 0, 'left': 0, 'width': WIDTH, 'height': HEIGHT}
@@ -1376,7 +1375,7 @@ class Serv(BaseHTTPRequestHandler):
         allowed = EiLO.checkauth(self.address_string(),"http")
         # Auth check
         if self.path != '/index.html' and self.path != '/' and self.path != '/login.html' and self.path != '/motd' and self.path != '/smallinfo' and self.path != '/remo':
-            if allowed == 0:
+            if allowed == 1:
                 self.path = '/unauth.html'
                 self.send_response(401)
                # printlog(f"Unauthorized (401) was given out to: {self.address_string()}")
@@ -1409,46 +1408,64 @@ class Serv(BaseHTTPRequestHandler):
             # custom urls
             # Mouse Movement API
             if "/mouse?" in self.path:
+                file_to_open = "ae"
+                self.send_response(200)
                 thestring = self.path
                 thestring = thestring.split("/mouse?")
                 thestring = thestring[1]
                 thestring = thestring.split("&")
+                #The X Position and Y Position are signed 8-bit integers, Bit 7 (value 0x80) determines the sign of the value. When this value is negative, the mouse is being moved to the left. When this value is positive, the mouse is being moved to the right
+                # The conversion is automatic in the move mouse function.
+                # Input a value of 0-255
                 x = int(thestring[0])
                 y = int(thestring[1])
                 HID.movemouse(x,y)
             if "/mouseclick?" in self.path:
+                file_to_open = "ae"
+                self.send_response(200)
                 thestring = self.path
                 thestring = thestring.split("/mouseclick?")
                 button = int(thestring[1])
                 HID.clickmouse(button)
             # Keyboard API
             if "/keyboard?" in self.path:
-                try:
-                    file_to_open = "ae"
-                    self.send_response(200)
-                    keyinput = self.path
-                    keyinput = keyinput.split("?")
-                    # '/keyboard?' is [0]
-                    # modifiers are [1]
-                    # the actual key is [2]
-                    # example url1: /keyboard?ctrl&alt?del
-                    # example url2: /keyboard?n?a
-                    # example url2: /keyboard?ctrl?a
-                    
-                    # example url2: /keyboard?n?f1
-                    modifier = keyinput[1]
-                    if modifier != "n":
-                        try:
-                            modifier = modifier.split("&")
-                        except:
-                            modifier = [modifier]
-                    else:
-                        modifier = []
-                    keypress = keyinput[2]
-                    HID.sendkeytext(keypress,modifier)
-                except Exception as ae:
-                    print("error in hid http " + str(ae))
-                logprint("http: keyboard API done!")
+            #try:
+                file_to_open = "ae"
+                self.send_response(200)
+                keyinput = self.path
+                keyinput = keyinput.split("?")
+                # '/keyboard?' is [0]
+                # modifiers are [1]
+                # the actual key is [2]
+                # example url1: /keyboard?ctrl&alt?del
+                # example url2: /keyboard?n?a
+                # example url2: /keyboard?ctrl?a
+                logprint("HTTP KEYAPI: key: "+keyinput[2])
+                logprint("HTTP KEYAPI: mod: "+keyinput[1])
+                #logprint()
+                
+                # example url2: /keyboard?n?f1
+                modifier = keyinput[1]
+                if modifier != "n":
+                    try:
+                        modifier = modifier.split("&")
+                        print("KeyAPI: Found the & split!")
+                        print(modifier)
+                    except:
+                        modifier = [modifier]
+                        print("KeyAPI: No & split!")
+                        print(modifier)
+                else:
+                    modifier = []
+                
+                logprint("HTTP API MODIFIER:")
+                logprint(modifier)
+                keypress = keyinput[2]
+                logprint("KeyAPI: Sending key: "+keypress)
+                HID.sendkeytext(keypress,modifier)
+            #except Exception as ae:
+            #    print("error in hid http " + str(ae))
+            logprint("http: keyboard API done!")
 
 
             if self.path == "/overview.get":
@@ -2080,20 +2097,23 @@ class HID:
 
     # BEGIN SHOUTY CAPS VARIABLES!!!!!!!!!!!!!!! (SCREAM WHEN YOU READ THIS COMMENT xdd)
     KEY_DELETE = 0x4c
-    KEY_WIN = 0x5B # left
-    KEY_SUPER = 0x5B # left
+    KEY_WIN = 0x5b # left
+    KEY_SUPER = 0x5b # left
     
     # Expanded keyboard_keys Maps
     KEY_MAPPINGS_SPECIAL = {
         # delete
-        'del': KEY_DELETE, # used for loging in, control alternitive delete
+        'none': 0x00,
+        'del': 0x4c, # used for loging in, control alternitive delete
         'bs': KEY_BACKSPACE,
+        'tab': KEY_TAB,
+        'enter': KEY_ENTER,
         # control
         'shift': KEY_LEFT_SHIFT,
         'ctrl': KEY_LEFT_CTRL,
         'alt': KEY_LEFT_ALT,
-        'super': KEY_SUPER, # there the same, use for "compatiblity"
-        'win': KEY_WIN,     # there the same, use for "compatiblity"
+        'super': 0x5b, # there the same, use for "compatiblity"
+        'win': 0x5b,     # there the same, use for "compatiblity"
         # function row
         'esc': KEY_ESC, 
         'f1': KEY_F1,
@@ -2123,46 +2143,112 @@ class HID:
             logprint(f"HID: keytokey(keynamestr): Thats not a keycode! {key}")
 
     def sendkeytext(keytext,control=[]):
+        # HID can hold up to 6 keys at once not/inc modifier
         hasmod = 0
         if control != []:
             # Special keys to hold aswell
+            # Note that one mod can be sent at a time
+            #  Modifier Byte
+            bits = [0, 0, 0, 0, 0, 0, 0, 0]
+            # LC, LS, LA, LG, RC, RS, RA, RG
+            # Great ref: https://wiki.osdev.org/USB_Human_Interface_Devices
             hasmod = 1
             for ae in range(len(control)):
-                controlkey = HID.keytokey(control[ae])
-                Keyboard.hold_key(0, HID.KEY_MAPPINGS_SPECIAL[controlkey])
+                if control[ae] == "ctrl":
+                    bits[0] = 1
+                if control[ae] == "shift":
+                    bits[1] = 1
+                if control[ae] == "alt":
+                    bits[2] = 1
+                if control[ae] == "win" or control[ae] == "super":
+                    bits[3] = 1
+            logprint(bits)
+            bitstring = "".join(str(x) for x in bits)
+            modifier = int(bitstring, 2)
+            logprint("Modifier byte:")
+            logprint(str(modifier))
+        else:
+            modifier = 0
         key = HID.keytokey(keytext)
-        Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
+        Keyboard.send_key(modifier, key, hold=0) # send_key(controlkeys, *keys, hold=0)
         logprint("sendkeytext(): Keys sent!")
         if hasmod:
             Keyboard.release_keys()
             
     # Custom HID Mouse Driver/API
+    # Note that the mouse doesnt work in Windows.
+    # Idea: Use HostCommunication to transmit mouse control
 
+    # Re-define the click function in HIDPi
+    def click(report,hold):
+        logprint("click!")
+        logprint(str(report))
+        Mouse._send_report(report,hold)
+    #Mouse._send_report(bytes([button, 0, 0, 0]), hold)
+    # "\x0\x{X-axis}\x{y-axis}\x0" 
     def movemouse(x,y):
+        # Usefull info: https://github.com/pelya/android-keyboard-gadget/issues/135
         logprint("HID Moving mouse: "+str(x)+" "+str(y))
-        Mouse.move(x,y)
+        signedx = x - 256 if x > 127 else x
+        signedy = y - 256 if y > 127 else y
+        print("signedx: "+str(signedx))
+        print("signedy: "+str(signedy))
+        # note: no scroll wheel here
+        report = bytes([0x00, signedx, signedy, 0x00])
+        print(str(report))
+        Mouse._send_report(report,0)
 
     def clickmouse(ae,dn=1):
         # LEFT = 1
         # RIGHT = 2
         # BOTH = 3
         # MIDDLE = 4
-
         # HIDPi Enchancements: TODO: Make click-and-drag?
         # Continous hold untill function called to release the button.
+        mousereport = [0x00, 0x00, 0x00] # button byte, X movement (0-255), Y Movement (0-255)
+        buttonbyte = [0, 0, 0, 0, 0, 0, 0, 0] # [0] Left BTN [1] Right BTN [2] Middle button (0 is off 1 is on for all) The rest of the bits are for extra mouse buttons "device-specific features" 
         if dn:
             if ae == 1:
                 logprint("Click left")
-                Mouse.click(ae, hold=0.1)
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[0] = 1
             if ae == 2:
                 logprint("Click right")
-                Mouse.click(ae, hold=0.1)
-            if ae == 3:
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[1] = 1
+            if ae == 4: 
                 logprint("Click both")
-                Mouse.click(ae, hold=0.1)
-            if ae == 4:
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[0] = 1
+                buttonbyte[1] = 1
+            if ae == 3:
                 logprint("Click middle")    
-                Mouse.click(ae, hold=0.1)  
+                #Mouse.click(ae, hold=0.1)  
+                buttonbyte[2] = 1
+        else:
+            if ae == 1:
+                logprint("Release left")
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[0] = 0
+            if ae == 2:
+                logprint("Release right")
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[1] = 0
+            if ae == 4: 
+                logprint("Release both")
+                #Mouse.click(ae, hold=0.1)
+                buttonbyte[0] = 0
+                buttonbyte[1] = 0
+            if ae == 3:
+                logprint("Release middle")    
+                #Mouse.click(ae, hold=0.1)  
+                buttonbyte[2] = 0
+
+        bitstring = "".join(str(x) for x in buttonbyte)
+        buttonbytefull = int(bitstring, 2)
+        mousereport[0] = buttonbytefull
+        # click it
+        HID.click(bytes(mousereport),0)
 
 
 # Now Main Code (NMC)
