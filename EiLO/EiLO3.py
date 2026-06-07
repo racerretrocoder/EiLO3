@@ -9,16 +9,23 @@
 # Recomended python version: 3.8.8
 # If you ever want to try this software out, Or if you need help setting it up. Ask me, id love to help
 
+# Regular imports
 import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess, hashlib, math
+# from's
+from zlib import compress
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from getpass import getpass
+
+from mss import mss
+
+WIDTH = 1080
+HEIGHT = 1920
 # Ping tool For Windows # from pythonping import ping 
 
 #
 # NEW! EiLO is now compatible with HIDPi!! Its a really awesome project
 # Note this is only available to pi 3 and 4 (or if you have a zero)
 #
-
 HID = 0
 print("Check out HIDPi on github here! Its awesome. https://github.com/rikka-chunibyo/HIDPi/")
 try:
@@ -54,12 +61,10 @@ def logprint(message,option=""):
 # For the webserver: The default account username is: Administrator, The password is EiLO3's master password (or the password to login to the terminal locally)"
 # (You set this password during the inital setup when you run this script for the first time!)
 
-
 automatedaction = ""
 powerstate = 0 # System Power State 0 - off 1 - on 2 - Process of booting up
 hostpower = 0 # Host power state
 phnyautostartenabled = 0
-
 # IP Address cashe list
 # When ever a user logs in. there IP address gets stored here. They have 1 hour before its removed from this list and they have to login again.
 authenticatedAddresses = [] # Users have a 1 hour session
@@ -84,7 +89,6 @@ class configuration:
                 # password
                 # permissionstring
                 mainstring = mainstring + f"{users[i]}\n{paswds[i]}\n{permissions[i]}\n"
-
             else:
                 # skip over default admin acc
                 ae = 1 # very funny variable!!!
@@ -437,7 +441,7 @@ def writeserialdata(msg):
 
 
     # This is the CLI for the remote console
-def parsecommand(username, cmd):
+def parsecommand(username, cmd, conn, sock):
     global computername
     global powerstate
     global motd
@@ -485,6 +489,21 @@ def parsecommand(username, cmd):
             thestring = thestring + f"Username: {users[i]} - Permissions: {permissions[i]}\n"
             logprint(thestring)
         return f"<{username}>@{computername}_EiLO $ ", thestring
+    # IRC Video
+    if cmd.startswith("init irc"):
+        logprint("RT: INIT VIDEO!")
+        IRC.handshake(conn,sock)
+        printlog(f"Integrated Remote Console started by {username}")
+        return f"<{username}>@{computername}_EiLO $ ", "\nIntegrated Remote Console session ended.\nYou have been returned to the terminal."
+    if cmd.startswith("irc"):
+        logprint("RT: INIT VIDEO!")
+        IRC.handshake(conn,sock)
+        printlog(f"Integrated Remote Console started by {username}")
+        return f"<{username}>@{computername}_EiLO $ ", "\nIntegrated Remote Console session ended.\nYou have been returned to the terminal."
+    if cmd == "end":
+        printlog(f"Integrated Remote Console stopped by {username}")
+        return f"[SYSTEM] ", "Please wait... Reconnecting..."
+    
     # now for config commands
     if cmd.startswith("create user"):
         http,irc,virt,pwer,sett,admin = EiLO.getpermsuser(username,1)
@@ -589,7 +608,7 @@ def parsecommand(username, cmd):
             return f"<{username}>@{computername}_EiLO $ ", f"Successfully changed MOTD"
            
     if cmd == "exit":
-        return f"<{username}>@{computername}_EiLO $ ", f"Ending Remote Console Connection&&exit"
+        return f"<{username}>@{computername}_EiLO $ ", f"Ending Remote Console Connection"
     else:
         return f"<{username}>@{computername}_EiLO $ ", "\nstatus=0\nCommand Processing Failed.\n"    
 
@@ -629,7 +648,6 @@ def help(cmd=""):
         print("  Short commands for power\n  |---power on       Turn on the system")
         print("  |---power off       Logically power off the system\n")
         command()
-
     else:
         print("EiLO 3 help\n")
         print("power <type>      Performs an action on the Power Button")
@@ -798,7 +816,7 @@ def automatedserial(input):
     print("Complete!")
     sys.exit()
 
-
+# Experimental SSH Server
 
 # host_key = paramiko.RSAKey.generate(2048)
 # 
@@ -874,7 +892,7 @@ def automatedserial(input):
 #         except Exception as e:
 #             print(f'*** Error accepting connection: {e}')
 
-class HostCommunication:
+class HostCommunication: # Communication with the server
 
     def getnic():
         global localip
@@ -963,6 +981,79 @@ class HostCommunication:
         data = csFT.recv(1024) # wait till ping completes
         # get results
 
+# Remote Console Class
+class IRC:
+    # Note that Keyboard/Mouse control is controlled over HTTP
+    def IRC_Server(host='0.0.0.0', port=5000): # This func is prob not needed
+        sock = socket.socket()
+        sock.bind((host, port))
+        global WIDTH # Server Screen Width
+        global HEIGHT # Server Screen Height
+        try:
+            sock.listen(5)
+            logprint('IRC: Server started.')
+            while 'connected':
+                conn, addr = sock.accept()
+                logprint('IRC: Client connected IP:', addr)
+                # threadae = Thread(target=inputae, args=())
+                # threadae.start()
+                # thread = Thread(target=retreive_screenshot, args=(conn,sock,))
+                # thread.start()
+        finally:
+           #sock.close()
+           #conn.close()
+            logprint("IRC: reset back to handshake state!")
+    
+    def handshake(conn,sock):
+        thestring = f"{WIDTH},{HEIGHT}"
+        msgback = f"IRCDRIVER&&{thestring}"
+        conn.send(msgback.encode('utf-8'))
+        logprint("IRC: handshake(): sending screen")
+        time.sleep(3) # Delay to let the client catch up
+        logprint("IRC: Activating Video Stream")
+        IRC.video_loop(conn,sock)
+        # Ended!
+        logprint("IRC: End of handshake.")
+        #conn.close()
+        #sock.close()
+        #videothread = threading.Thread(target=IRC.video_loop, args=(conn,sock,))
+        #videothread.start()
+
+    def video_loop(conn,sock): # sock is only used to close it
+        global WIDTH
+        global HEIGHT
+        # ctypes.windll.user32.SetProcessDPIAware(1)
+
+        with mss() as sct:
+            # The region to capture
+            rect = {'top': 0, 'left': 0, 'width': WIDTH, 'height': HEIGHT}
+            try:
+                running = 0
+                while True:
+                    data = conn.recv(1024).decode() # Get response
+                    if data == "end":
+                        logprint("IRC VIDEO: The Client has requested to gracefully exit...")
+                        raise Exception
+                # get it from the capture card
+                    img = sct.grab(sct.monitors[1]) # rect supposed to replace sct.monitors[1]
+
+                # idea: I will make a custom protocol that will allow to send a portion of the screen (if a change in that area was detected) this will greatly decrease the required bandwidth and improve performance
+               
+                # Tweak the compression level here (0-9)
+                    pixels = compress(img.rgb, 9)
+                # Send the size of the pixels length
+                    size = len(pixels)
+                    size_len = (size.bit_length() + 7) // 8
+                    conn.send(bytes([size_len]))
+                # Send the actual pixels length
+                    size_bytes = size.to_bytes(size_len, 'big')
+                    conn.send(size_bytes)
+                # Send pixels
+                    conn.sendall(pixels)
+            except:
+                print("IRC Video: Client disconnected! / Exited")
+                #conn.close() # end the irc sesh
+                #sock.close() # end the irc sesh
 
 
 
@@ -1173,13 +1264,14 @@ class EiLO:
         authusers.append(username)
         logprint("Session added")
         EventLog.eventwrite(f"IP Address {ip} has been given a new session")
+        logprint(f"IP Address {ip} has been given a new session")
         logprint(authenticatedAddresses)
-        time.sleep(3600)
-        EventLog.eventwrite(f"Session for {ip} (username: {username}) has ended (timed out, 1hr, 3600 seconds)")
-        # Session ended.
-        authenticatedAddresses.remove(ip)
-        authusers.remove(username)
-        logprint(authenticatedAddresses)
+        #time.sleep(3600)
+        #EventLog.eventwrite(f"Session for {ip} (username: {username}) has ended (timed out, 1hr, 3600 seconds)")
+        ## Session ended.
+        #authenticatedAddresses.remove(ip)
+        #authusers.remove(username)
+        #logprint(authenticatedAddresses)
 
     def casheuser(ip,username):
         printlog(f"IP Address {ip} was cashed into the system under the username: {username}")
@@ -1315,7 +1407,20 @@ class Serv(BaseHTTPRequestHandler):
             #UserMangement.testlogprint("aeaaaaaa")
         except:
             # custom urls
-
+            # Mouse Movement API
+            if "/mouse?" in self.path:
+                thestring = self.path
+                thestring = thestring.split("/mouse?")
+                thestring = thestring[1]
+                thestring = thestring.split("&")
+                x = int(thestring[0])
+                y = int(thestring[1])
+                HID.movemouse(x,y)
+            if "/mouseclick?" in self.path:
+                thestring = self.path
+                thestring = thestring.split("/mouseclick?")
+                button = int(thestring[1])
+                HID.clickmouse(button)
             # Keyboard API
             if "/keyboard?" in self.path:
                 try:
@@ -1328,9 +1433,15 @@ class Serv(BaseHTTPRequestHandler):
                     # the actual key is [2]
                     # example url1: /keyboard?ctrl&alt?del
                     # example url2: /keyboard?n?a
+                    # example url2: /keyboard?ctrl?a
+                    
+                    # example url2: /keyboard?n?f1
                     modifier = keyinput[1]
                     if modifier != "n":
-                        modifier = modifier.split("&")
+                        try:
+                            modifier = modifier.split("&")
+                        except:
+                            modifier = [modifier]
                     else:
                         modifier = []
                     keypress = keyinput[2]
@@ -1467,7 +1578,7 @@ class Serv(BaseHTTPRequestHandler):
             logprint(f"eilo{unamemain}eilo")
             authenticated = EiLO.authenticateUser(self.address_string(),unamemain,pswmain)
             if authenticated == 1:
-                logprint("redirected!")
+                logprint("HTTP Login success, redirected!")
                 self.path = '/redir.html'
 
 
@@ -1676,14 +1787,12 @@ connected = 1
 # Moved! Moved to writeserialdata(b'command here')
 
 
-# Remote Console Session
+# Remote Terminal Sessions
 # [0] is the prompt
 # [1] is the reset of the message
-
-
 # Todo: Improve this function to accept more connections keeping port chanaging a minimum
 def remoteconsole(port):
-    print(f"\nRemote Console Port: {port}")
+    print(f"\nRemote Terminal Port: {port}")
     loggedin = 0
     isconnected = 0
     global password
@@ -1691,7 +1800,7 @@ def remoteconsole(port):
     while True:
         # get the hostname
         host = "0.0.0.0" # socket.gethostname()
-        print("Starting Remote Console Server")
+        print("Starting Remote Terminal Server")
         logprint(host)
         logprint(port)
         rcusername = ""
@@ -1703,7 +1812,7 @@ def remoteconsole(port):
         # configure how many client the server can listen simultaneously
         server_socket.listen(2)
         conn, address = server_socket.accept()  # accept new connection
-        logprint("log: new remote console from: " + str(address))
+        logprint("RT: log: new remote console from: " + str(address))
         # open a new connection!
         #newport = port + 1 # increase the next port by one so more connections can be made after
         #aex = threading.Thread(target=remoteconsole, args=(newport,))
@@ -1740,28 +1849,29 @@ def remoteconsole(port):
                         if index == -1:
                             # no user account
                             conn.close()
-                            logprint("breaking...")
+                            logprint("RT: breaking...")
                             break
                         
                         if str(rcpassword) == str(paswds[index]):
                             # check the permissions of the user
-                            logprint("that password works, getting permissions")
+                            logprint("RT: that password works, getting permissions")
                             http,irca,virt,pwer,sett,admin = EiLO.getpermsuser(rcusername,1)
-                            logprint(f'IRCA:{irca}:IRCA')
+                            logprint(f'RT: IRCA:{irca}:IRCA')
                             if irca == 1 or irca == "1" or irca == " 1" or irca == "1 " or irca == " 1 ":
                                 loggedin = 1 
-                                logprint("Remote console user authenticated successfully")
-                                message = f"<{rcusername}>@{computername}_EiLO $ &&EiLO 3 build 188 at Dec 06 2025\nSystem Name: {computername}\nSystem Power: {getpowerstate()}\n&&cls"
+                                logprint(f"RT: Remote console user {rcusername} @ {address} authenticated successfully")
+                                EiLO.authenticateUser(address[0],rcusername,rcpassword)
+                                message = f"<{rcusername}>@{computername}_EiLO $ &&EiLO 3 build 2.00 at Jun 5 2026\nSystem Name: {computername}\nSystem Power: {getpowerstate()}\n&&cls"
                                 conn.send(message.encode())   
                             else: 
-                                logprint("no irc perm")
-                                message = f">&&Your user account does not have the nessory permissions to use the Remote Console\nPlease consult your Administrator&&exit"
+                                logprint("RT: no irc perm")
+                                message = f">&&Your user account does not have the required permissions to use the Remote Terminal\nPlease consult The EiLO Administrator&&exit"
                                 conn.send(message.encode())  
                     except Exception as e:
-                        logprint(f"Exception on remote console login\n{e}")
-                        logprint("A device disconnected! (From exception detect)")
+                        logprint(f"RT: Exception on remote console login\n{e}")
+                        logprint("RT: A device disconnected! (From exception detect)")
                         conn.close()
-                        logprint("Disconncted!!!")
+                        logprint("RT: Disconncted!!!")
                         #aex = threading.Thread(target=remoteconsole, args=(port,))
                         #aex.start()
                         break
@@ -1769,9 +1879,9 @@ def remoteconsole(port):
             try:
                 data = conn.recv(1024).decode() # This line errors when a client disconnects.
             except:
-                logprint("A device disconnected! Device list cleared.")
+                logprint("RT: A device disconnected! Device list cleared.")
                 conn.close()
-                logprint("Disconncted!!!")
+                logprint("RT: Disconncted!!!")
                 #aex = threading.Thread(target=remoteconsole, args=(port,))
                 #aex.start()
                 break
@@ -1781,40 +1891,44 @@ def remoteconsole(port):
                 ae = 0
             if data != '':
                 if str(data) != "ae":
-                    logprint("\nRemote Console: from a client: " + str(data))
+                    logprint("RT: Remote Terminal: from a client: " + str(data))
                     datastr = str(data)
                     thesplit = datastr.split("&&")
-                    logprint(f"datastr:{datastr}")
+                    logprint(f"RT: datastr:{datastr}")
                     devicename = thesplit[0]
                     text = thesplit[1]
                     logprint(thesplit)
                     if thesplit[1] == " Command recived\n": # This is the message the device first sends. initing the sequense
-                        logprint(f"log: New device connected to remote console | {devicename}")
+                        logprint(f"log: New device connected to remote terminal | {devicename}")
                         isconnected = 1
                         # End here. go to login script at top
                     if loggedin == 1:
-                        prompt, messageback = parsecommand(rcusername,thesplit[1])
+                        try:
+                            prompt, messageback = parsecommand(rcusername,thesplit[1], conn, server_socket)
 
-                        logprint(prompt)
-                        logprint(messageback)
-                        message = f"{prompt}&&{messageback}"
-                        conn.send(message.encode())   
-                        if thesplit[1] == "exit":
-                            time.sleep(1)
-                            conn.close()
+                            logprint(prompt)
+                            logprint(messageback)
+                            message = f"{prompt}&&{messageback}"
+                            conn.send(message.encode())   
+                            if thesplit[1] == "exit":
+                                time.sleep(1)
+                                conn.close()
+                        except Exception as aeae:
+                            logprint("RT: Fault detected in RT " + str(aeae))
+                            break
             new = 1
             while new == 1:
                 new = 0
             data = ''
-        logprint("Breaking out of that while loop #1")
+        logprint("RT: Breaking out of that while loop #1")
         break
-    logprint("Out of the while loop!")
+    logprint("RT: Out of the while loop!")
     conn.close()
-    logprint("remoteconsole() function thread exited successuflly!!")
+    logprint("RT: function thread exited successuflly!!")
     aex = threading.Thread(target=remoteconsole, args=(port,))
     aex.start()
 
-print("Starting Remote Console Server...")
+print("Starting Remote Terminal Server...")
 telnet = threading.Thread(target=remoteconsole, args=(terminalport,))
 telnet.start()
 
@@ -1955,21 +2069,21 @@ class SysInfo:
 
 class HID:
     # HIDPi
-    # Custom HID Keyboard Driver
-    # Expanded keyboard_keys Maps
     # This is to be integrated with the HTTP server
 
-        # simple stuff
+    # Custom HID Keyboard Driver/API
+
+    # simple stuff
     def sendtext(text): # RDPWeb Style "Send text to remote machine"
         Keyboard.send_text(text, delay=0.25)
         logprint(f"Keyboard sent: {text}")
 
-    # BEGIN SHOUTY CAPS VARIABLES!!!!!!!!!!!!!!! (SCREAM WHEN YOU READ THIS COMMENT XD)
+    # BEGIN SHOUTY CAPS VARIABLES!!!!!!!!!!!!!!! (SCREAM WHEN YOU READ THIS COMMENT xdd)
     KEY_DELETE = 0x4c
     KEY_WIN = 0x5B # left
     KEY_SUPER = 0x5B # left
     
-    # extra keymapps
+    # Expanded keyboard_keys Maps
     KEY_MAPPINGS_SPECIAL = {
         # delete
         'del': KEY_DELETE, # used for loging in, control alternitive delete
@@ -2006,7 +2120,7 @@ class HID:
                 keycode = HID.KEY_MAPPINGS_SPECIAL[key]
             return keycode
         except:
-            logprint(f"Thats not a keycode! {key}")
+            logprint(f"HID: keytokey(keynamestr): Thats not a keycode! {key}")
 
     def sendkeytext(keytext,control=[]):
         hasmod = 0
@@ -2015,13 +2129,42 @@ class HID:
             hasmod = 1
             for ae in range(len(control)):
                 controlkey = HID.keytokey(control[ae])
-                Keyboard.hold_key(0, KEY_MAPPINGS_SPECIAL[controlkey])
+                Keyboard.hold_key(0, HID.KEY_MAPPINGS_SPECIAL[controlkey])
         key = HID.keytokey(keytext)
         Keyboard.send_key(0, key, hold=0.1) # send_key(controlkeys, *keys, hold=0)
         logprint("sendkeytext(): Keys sent!")
         if hasmod:
             Keyboard.release_keys()
-    
+            
+    # Custom HID Mouse Driver/API
+
+    def movemouse(x,y):
+        logprint("HID Moving mouse: "+str(x)+" "+str(y))
+        Mouse.move(x,y)
+
+    def clickmouse(ae,dn=1):
+        # LEFT = 1
+        # RIGHT = 2
+        # BOTH = 3
+        # MIDDLE = 4
+
+        # HIDPi Enchancements: TODO: Make click-and-drag?
+        # Continous hold untill function called to release the button.
+        if dn:
+            if ae == 1:
+                logprint("Click left")
+                Mouse.click(ae, hold=0.1):
+            if ae == 2:
+                logprint("Click right")
+                Mouse.click(ae, hold=0.1):
+            if ae == 3:
+                logprint("Click both")
+                Mouse.click(ae, hold=0.1):
+            if ae == 4:
+                logprint("Click middle")    
+                Mouse.click(ae, hold=0.1):    
+
+
 # Now Main Code (NMC)
 # Live Console Session
 
