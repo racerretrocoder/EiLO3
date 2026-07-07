@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+      button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #003366;
+        }
+
+            .ae {
+                position: relative;
+                top:  0px;
+                left: 0px;
+            } 
+            body {
+                font-family: Arial, sans-serif;
+            }
+            .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #666;
+    padding: 10px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.data-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+        </style>
+    </head>
+    <body>
+        <p hidden id="usersae"></p>
+        <p hidden id="permsae"></p>
+        <h1 class="title">Virtual Media</h1>
+        <h2>Note: Uploading large ISO images may take a long time</h2>
+        <h3>Only 1 ISO file can be uploaded and used at a time</h3>
+        <h3>When you want to switch ISO images, the old one gets overwritten.</h3>
+        <center>
+            
+        <h1 class="ae">Virtual Optical Drive</h1>
+        <button onclick="eject();">Eject Tray</button>
+<button onclick="insert();">Close Tray</button>        
+        <form action="/virtualmedia" method="POST" enctype="multipart/form-data">
+            <lable for="file">Choose an ISO Image to upload to EiLO:</lable>
+            <input type="file" id="file" name="file">
+            <button type="submit" onclick="alert('Uploading the ISO, Please wait untill the success page is shown')">Upload ISO Image</button>
+        </form>
+        
+        
+
+    </center>
+        <script> 
+            upload = function() {
+                window.location.href = "/upload.html";
+            }
+        eject = function() {
+            
+            fetch("virtualmedia/ejectiso").then(function(response) {
+                return response.text(); 
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+            alert("Virtual Optical Drive Ejected. NOTE: Keyboard and mouse control will be unavailable untill you close the tray.");
+        }        
+        insert = function() {
+            
+            fetch("virtualmedia/insertiso").then(function(response) {
+                return response.text(); 
+            }).then(function(data) {
+                console.log(data);
+            }).catch(function(err) {
+                console.log('Fetch Error :-S', err);
+            });
+            alert("Virtual Optical Drive Closed");
+        }
+        // file eilovmedia.iso
+        </script>
+    </body>
+</html>
