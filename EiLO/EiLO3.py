@@ -10,23 +10,28 @@
 # If you ever want to try this software out, Or if you need help setting it up. Ask me, id love to help
 
 # Regular imports
-import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess, hashlib, math
+print("BTW EiLO3 must be able to run commands with SUDO! As it requres extra permissions to control the Virtual USB drive")
+import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess, hashlib, math, cv2, pickle, struct, pygame, pygame.camera, io, cgi
 # from's
 from zlib import compress
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from getpass import getpass
-
 from mss import mss
+from mss.screenshot import ScreenShot
 
+# as
+import numpy as np
+cam_list = ""
 WIDTH = 1080
 HEIGHT = 1920
 # Ping tool For Windows # from pythonping import ping 
 
 #
 # NEW! EiLO is now compatible with HIDPi!! Its a really awesome project
-# Note this is only available to pi 3 and 4 (or if you have a zero)
+# Note this is only available to pi 4 and 5 with the OTG connection (or if you have a zero)
 #
 HID = 0
+IRCENABLED = 0
 print("Check out HIDPi on github here! Its awesome. https://github.com/rikka-chunibyo/HIDPi/")
 try:
     from hidpi import Keyboard, Mouse
@@ -36,6 +41,7 @@ try:
     HID = 1
 except:
     ae = 0
+    print("HIDPi not detected! If you want to control the server and use virtual media:\nplease setup HIDPi for raspberry pi 4 and 5")
 
 name = os.name
 def clearscreen():
@@ -45,6 +51,7 @@ def clearscreen():
     else:
         os.system("clear")
 clearscreen()
+
 
 debug = 0
 def logprint(message,option=""):
@@ -161,11 +168,12 @@ class EventLog:
             return mainarray,mainstring
         except:
             return ["[Event log empty]"],"[Event log empty]"
-    def cleareventlog():
+    def cleareventlog(username):
         fn = "eventloggy.txt"
         with open(fn,'w') as ae:
             ae.writelines([""])
             ae.close()
+        EventLog.eventwrite(f"Event log cleared by [{username}]")
     def eventwrite(log):
         fn = "eventloggy.txt"
         try:
@@ -183,9 +191,11 @@ class EventLog:
                 ae.write(thestring)
                 logprint("Even log cleared!")
                 ae.close()
+EventLog.eventwrite("")
 EventLog.eventwrite("----------------")
-EventLog.eventwrite("EiLO3 Started up!")
-
+EventLog.eventwrite("EiLO3 Starting Up!")
+EventLog.eventwrite("----------------")
+EventLog.eventwrite("")
 
 def getpowerstate():
     global powerstate
@@ -451,7 +461,7 @@ def parsecommand(username, cmd, conn, sock):
     global permissions
     if cmd == "help":
         #print("ae")
-        return f"<{username}>@{computername}_EiLO $ ","EiLO 3 Remote Console CLI Help\n\npower <type>      Performs an action on the Power Button\n  |---power momentary   Press the Power button once\n  |---power hold        Press and hold the Power button for 5 seconds\n  |---power coldboot    Power hold followed by a momentary.\n  |---power reset       Reset the system\n\nGeneral Configuration\nUsers\n\nshow users   Show existing user accounts followed by there permission string\nshow users http   show users currently logged into an active session via HTTP\ncreate user <username> <password> <permstring>   Create a user account\nedit user <username> <newpass> <newperm>   Modify an existing user\ndelete user <username>   Delete an existing user\n\n\nconfig motd <message>   Customize the login security banner\n\noem_eiloping <ipaddress>   Ping an IP address through EiLO\noem_clientping <ipaddress>   Ping an IP Address through the client\n\n\nEnd of help! (for now ;)"
+        return f"<{username}>@{computername}_EiLO $ ","EiLO 3 Remote Console CLI Help\n\npower <type>      Performs an action on the Power Button\n  |---power momentary   Press the Power button once\n  |---power hold        Press and hold the Power button for 5 seconds\n  |---power coldboot    Power hold followed by a momentary.\n  |---power reset       Reset the system\n\nGeneral Configuration\nUsers\n\nshow users   Show existing user accounts followed by there permission string\nshow users http   show users currently logged into an active session via HTTP\ncreate user <username> <password> <permstring>   Create a user account\nedit user <username> <newpass> <newperm>   Modify an existing user\ndelete user <username>   Delete an existing user\n\n\nconfig motd <message>   Customize the login security banner\n\noem_eiloping <ipaddress>   Ping an IP address through EiLO\noem_clientping <ipaddress>   Ping an IP Address through the client\nirc - Connect to the Integrated Remote Console\n\nEnd of help! (for now ;)"
     if cmd == "power on":
         writeserialdata(b"A")
         printlog(f"{computername} | The Virtual Power Button was pressed momentarily remotely")
@@ -733,6 +743,7 @@ def command(): # This is locally
         pingresult = SysInfo.pinghost(4) # try to contact the host 6 times
         if pingresult == 1:
             print("EiLO 3 detected that the Host System is ON. It can be pinged!")
+            powerstate = 1
         else:
             powerstate = 0
             print("EiLO 3 detected that the Host System is OFF. Cant ping it!")
@@ -892,7 +903,11 @@ def automatedserial(input):
 #         except Exception as e:
 #             print(f'*** Error accepting connection: {e}')
 
+cpua,osa,releasea,builda,hostnamea,coresa,procida,archa,percentrama,totalrama,usagecpua = "           " # Save the data in cashe
+
 class HostCommunication: # Communication with the server
+
+
 
     def getnic():
         global localip
@@ -907,64 +922,93 @@ class HostCommunication: # Communication with the server
         logprint("Data from client recived")
         logprint(decoded)
         return decoded
-
+    
     def getclientinfo():
-        global localip
-        logprint("getclientinfo()")
-        csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        csFT.connect((localip, 8750))
-        # Send command
-        csFT.send(b"getsys")
-        logprint("Command sent! Waiting...")
-        data = csFT.recv(1024)
-        decoded = data.decode('utf-8')
-        logprint("Data from client recived")
-        logprint(decoded)
-        cpuname = decoded
-        thelist = cpuname.split("|eilo|")
-        logprint(thelist)
-        logprint("Success")
-        cpu = thelist[0]
-        os = thelist[1]
-        release = thelist[2]
-        build = thelist[3]
-        hostname = thelist[4]
-        cores = thelist[5]
-        procid = thelist[6]
-        arch = thelist[7]
-        percentram = thelist[8]
-        totalram = thelist[9]
-        usagecpu = thelist[10]
-        # returns 8 variables
-        time.sleep(0.1)
-        logprint("Complete! Sending back 'ae' to your client...")
-        csFT.send(b"ae") # let client know that we good
-        time.sleep(0.1)
+        global cpua
+        global osa
+        global releasea
+        global builda
+        global hostnamea
+        global coresa
+        global procida
+        global archa
+        global percentram
+        global totalrama
+        global usagecpua
+        try:
+            global localip
+            logprint("getclientinfo()")
+            csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            csFT.connect((localip, 8750))
+            # Send command
+            csFT.send(b"getsys")
+            logprint("Command sent! Waiting...")
+            data = csFT.recv(1024)
+            decoded = data.decode('utf-8')
+            logprint("Data from client recived")
+            logprint(decoded)
+            cpuname = decoded
+            thelist = cpuname.split("|eilo|")
+            logprint(thelist)
+            logprint("Success")
+            cpu = thelist[0]
+            os = thelist[1]
+            release = thelist[2]
+            build = thelist[3]
+            hostname = thelist[4]
+            cores = thelist[5]
+            procid = thelist[6]
+            arch = thelist[7]
+            percentram = thelist[8]
+            totalram = thelist[9]
+            usagecpu = thelist[10]
+            # returns 8 variables
+            time.sleep(0.1)
+            logprint("Complete! Sending back 'ae' to your client...")
+            csFT.send(b"ae") # let client know that we good
+            time.sleep(0.1)
+            cpua,osa,releasea,builda,hostnamea,coresa,procida,archa,percentrama,totalrama,usagecpua = cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpua
+            logprint("getclient info complete!!!!!")
+        except:
+            usagecpua = "Unknown"
+            percentrama = "Unknown"
+            return cpua,osa,releasea,builda,hostnamea,coresa,procida,archa,percentrama,totalrama,usagecpua
         return cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpu
     
     def getclientscreenshot():
         global localip
-        csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        csFT.connect((localip, 8750))
-        # get a screenshot from client
-        csFT.send(b"getscr")
-        logprint("Command sent! Waiting...")
-        with open("clientscreenshot.png",'wb') as scr:
-            while True:
-                #logprint("Now listening for screenshot data.")
-                data = csFT.recv(1024)
-                #logprint(data)
-                if data == b"aeeiloae":
-                    logprint("Data completed, ae recived")
-                    break
-                if not data:
-                    logprint("Data sent over complete")
-                    break
-                scr.write(data)
-            logprint("Successfully transfered screenshot")
-            scr.close()
-            # send back an ae
-            time.sleep(0.1)
+        global IRCENABLED
+        if IRCENABLED == 0:
+            csFT = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            csFT.connect((localip, 8750))
+            # get a screenshot from client
+            csFT.send(b"getscr")
+            logprint("Command sent! Waiting...")
+            with open("clientscreenshot.png",'wb') as scr:
+                while True:
+                    #logprint("Now listening for screenshot data.")
+                    data = csFT.recv(1024)
+                    #logprint(data)
+                    if data == b"aeeiloae":
+                        logprint("Data completed, ae recived")
+                        break
+                    if not data:
+                        logprint("Data sent over complete")
+                        break
+                    scr.write(data)
+                logprint("Successfully transfered screenshot")
+                scr.close()
+                # send back an ae
+                time.sleep(0.1)
+                return 1
+        else:
+            # Screenshot from IRC
+            global cam
+            img = cam.get_image()
+            pygame.time.wait(100)
+            img = cam.get_image()
+            pygame.image.save(img, "clientscreenshot.png")
+            logprint("getscr(): Get screenshot from IRC")
             return 1
 
     def oembdi_ping(ipaddr):
@@ -982,6 +1026,7 @@ class HostCommunication: # Communication with the server
         # get results
 
 # Remote Console Class
+vidstreamactive = 0
 class IRC:
     # Note that Keyboard/Mouse control is controlled over HTTP
     def IRC_Server(host='0.0.0.0', port=5000): # This func is prob not needed
@@ -1011,6 +1056,8 @@ class IRC:
         logprint("IRC: handshake(): sending screen")
         time.sleep(3) # Delay to let the client catch up
         logprint("IRC: Activating Video Stream")
+        global vidstreamactive
+        vidstreamactive = 1
         IRC.video_loop(conn,sock)
         # Ended!
         logprint("IRC: End of handshake.")
@@ -1022,37 +1069,44 @@ class IRC:
     def video_loop(conn,sock): # sock is only used to close it
         global WIDTH
         global HEIGHT
-        # ctypes.windll.user32.SetProcessDPIAware(1)
-        with mss() as sct:
-            # The region to capture
-            rect = {'top': 0, 'left': 0, 'width': WIDTH, 'height': HEIGHT}
-            try:
-                running = 0
-                while True:
-                    data = conn.recv(1024).decode() # Get response
-                    if data == "end":
-                        logprint("IRC VIDEO: The Client has requested to gracefully exit...")
-                        raise Exception
-                # get it from the capture card
-                    img = sct.grab(sct.monitors[1]) # rect supposed to replace sct.monitors[1]
+        global vidstreamactive
+        global cam
+        global cam_list
+        global powerstate
+        oldreso = (800, 600)
+        # The region to capture
+        try:
+            running = 0
+            while True:
+                reso = cam.get_size()
 
-                # idea: I will make a custom protocol that will allow to send a portion of the screen (if a change in that area was detected) this will greatly decrease the required bandwidth and improve performance
-               
-                # Tweak the compression level here (0-9)
-                    pixels = compress(img.rgb, 9)
-                # Send the size of the pixels length
-                    size = len(pixels)
-                    size_len = (size.bit_length() + 7) // 8
-                    conn.send(bytes([size_len]))
-                # Send the actual pixels length
-                    size_bytes = size.to_bytes(size_len, 'big')
-                    conn.send(size_bytes)
-                # Send pixels
-                    conn.sendall(pixels)
-            except:
-                print("IRC Video: Client disconnected! / Exited")
-                #conn.close() # end the irc sesh
-                #sock.close() # end the irc sesh
+                logprint("Cam res: " + str(reso)) 
+                #print("Waiting for client ping...")
+                data = conn.recv(1024).decode() # Get response
+                #print("Client ping rec")
+                if data == "end":
+                    logprint("IRC VIDEO: The Client has requested to gracefully exit...")
+                    raise Exception
+                if reso[0] < 1000:
+                    width = "0" + str(reso[0])
+                else:
+                    width = str(reso[0])
+                if reso[1] < 1000:
+                    height = "0" + str(reso[1])
+                else:
+                    height = str(reso[1])
+                conn.send(width.encode('utf-8'))
+                conn.send(height.encode('utf-8'))
+                image_surface = cam.get_image()
+                image_bytes = pygame.image.tostring(image_surface, "RGB")
+                image_bytes = compress(image_bytes,9)
+                data_length = len(image_bytes)
+                header = struct.pack("!I", data_length)
+                conn.sendall(header + image_bytes)
+        except Exception as aeaeae:
+            print("IRC Video: Client disconnected! / Exited " + str(aeaeae))
+            #conn.close() # end the irc sesh
+            #sock.close() # end the irc sesh
 
 
 
@@ -1194,6 +1248,7 @@ class EiLO:
         global authusers
         global permissions
         global users
+        autousername = EiLO.getuserfromip(ip)
         ipindex = 0
         authuserindex = 0
         permindex = -1
@@ -1213,20 +1268,11 @@ class EiLO:
                 logprint(authenticatedAddresses)
                 logprint(authusers)
                 logprint("ae: ",ae)
-                if userindex == -1:
-                    if len(authusers) == 1:
-                        if testname == authusers[0]:
-                            # found the index
-                            logprint("Found userindex")
-                            userindex = ae
-                            permindex = ae
-                    else:
-                        for aee in range(len(authusers)): # check them one by one xd
-                            if testname == authusers[aee]:
-                                # found the index
-                                logprint("Found userindex")
-                                userindex = ae
-                                permindex = ae
+                if users[ae] == autousername:
+                    logprint("found userindex")
+                    userindex = ae
+                    permindex = ae
+                    break
             if hasperm == "http":
                 perm = 0
             if hasperm == "irc":
@@ -1320,6 +1366,8 @@ class EiLO:
                 powerstate = 3
             if powerstate == 0:
                 powerstate = 2
+            elif powerstate == 2:
+                powerstate = 0
             writeserialdata(b"A")
             printlog("Power momentary given from WebUI")
     def powerhold(ip):
@@ -1329,6 +1377,8 @@ class EiLO:
             global powerstate
             if powerstate == 1:
                 powerstate = 3
+            else:
+                powerstate = 0
             printlog("Power hold given from WebUI")
     def powerreset(ip):
         perm = EiLO.checkauth(ip,"pwer")
@@ -1343,11 +1393,13 @@ class EiLO:
         if perm == 1:
             global powerstate
             if powerstate == 1:
-                powerstate = 2
+                powerstate = 0
             printlog("Power cold boot given from WebUI")
             writeserialdata(b"B")
-            time.sleep(15)
+            logprint("Power cold boot!")
+            time.sleep(5)
             writeserialdata(b"A")
+            logprint("Power cold boot Turned it back on!")
 
 
 # Webserver Class
@@ -1373,6 +1425,7 @@ class Serv(BaseHTTPRequestHandler):
         if self.path == '/':
             self.path = '/index.html'
         allowed = EiLO.checkauth(self.address_string(),"http")
+        user = EiLO.getuserfromip(self.address_string())
         # Auth check
         if self.path != '/index.html' and self.path != '/' and self.path != '/login.html' and self.path != '/motd' and self.path != '/smallinfo' and self.path != '/remo':
             if allowed == 0:
@@ -1389,13 +1442,17 @@ class Serv(BaseHTTPRequestHandler):
         # Power stuff
         if self.path == '/powermomentary' and allowed == 1:
             EiLO.powermomentary(self.address_string())
+            global powerstate
         if self.path == '/powerhold' and allowed == 1:
             EiLO.powerhold(self.address_string())
         if self.path == '/powercold' and allowed == 1:
             EiLO.powercoldboot(self.address_string())
         if self.path == '/powerreset' and allowed == 1:
             EiLO.powerreset(self.address_string()) 
-
+        adminallowed = EiLO.checkauth(self.address_string(),"admin")
+        if self.path == '/eventlogclear' and allowed == 1:
+            EventLog.cleareventlog(user)
+                
         try: 
             ae = f"{self.path}"
             ae = ae[1:]
@@ -1406,6 +1463,19 @@ class Serv(BaseHTTPRequestHandler):
             #UserMangement.testlogprint("aeaaaaaa")
         except:
             # custom urls
+            
+            # Virtual Media
+            if "/virtualmedia/ejectiso" in self.path:
+                file_to_open = "ae"
+                self.send_response(200)
+                HID.ejectiso()
+                
+            if "/virtualmedia/insertiso" in self.path:
+                file_to_open = "ae"
+                self.send_response(200)
+                HID.insertiso()
+                
+                
             # Mouse Movement API
             if "/mouse?" in self.path:
                 file_to_open = "ae"
@@ -1463,11 +1533,6 @@ class Serv(BaseHTTPRequestHandler):
                 keypress = keyinput[2]
                 logprint("KeyAPI: Sending key: "+keypress)
                 HID.sendkeytext(keypress,modifier)
-            #except Exception as ae:
-            #    print("error in hid http " + str(ae))
-            logprint("http: keyboard API done!")
-
-
             if self.path == "/overview.get":
                 cpu,os,release,build,hostname,cores,procid,arch,percentram,totalram,usagecpu = HostCommunication.getclientinfo()
                 fullstring = f"{cpu}|{os}|{release}|{build}|{hostname}|{cores}|{procid}|{arch}|{percentram}|{totalram}|{usagecpu}|{computername}|{longcomputername}|{localip}"
@@ -1777,8 +1842,39 @@ class Serv(BaseHTTPRequestHandler):
                 printlog(f"{self.address_string()} Attempted to create a user with insuffciant permissions")
                 logprint("redirected!")
                 self.path = '/unauth.html'
+                
+        if self.path == "/virtualmedia":
+            try:
+                r, info = self.deal_post_data()
+                self.path = "/successvm.html"
+            except Exception as e:
+                print(str(e))
+        
+            
         return Serv.do_GET(self)
- 
+    def deal_post_data(self):
+        virtmedperm = EiLO.checkauth(self.address_string(),"virt")
+        if virtmedperm != 1:
+            logprint("Virtual Media was denied")
+            return (False, "The user does not have access to virtual media")
+        ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
+        pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+        pdict['CONTENT-LENGTH'] = int(self.headers['Content-Length'])
+        if ctype == 'multipart/form-data':
+            logprint("HTTP POST Virtual Media File detected")
+            form = cgi.FieldStorage( fp=self.rfile, headers=self.headers, environ={'REQUEST_METHOD':'POST', 'CONTENT_TYPE':self.headers['Content-Type'], })
+            print(type(form))
+            try:
+                logprint("Attempt to write")
+                logprint("writing now...")
+                open("eilovmedia.iso", "wb").write(form["file"].file.read())
+                logprint("End of the script")
+            except IOError:
+                    print("Can't create file to write, do you have permission to write?")
+                    return (False, "Can't create file to write, do you have permission to write?")
+            except Exception as ee:
+                print("bad error lol "+str(ee))
+        return (True, "Files uploaded")
  
 
 
@@ -2012,6 +2108,14 @@ dcbot.start()
 # System Information Class
  
 class SysInfo:
+
+    def ping(host,pings=1):
+        param = '-n' if platform.system().lower()=='windows' else '-c'
+        command = ['ping', param, str(pings), host] # Only ping once
+        return subprocess.call(command,
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.STDOUT) == 0
+
     def pinghost(pings=1):
         global localip # The systems IP Address
         host = localip
@@ -2024,12 +2128,14 @@ class SysInfo:
     def pingloop():
         while True:
             global powerstate
-            #print("ping loop!")
+            #logprint("Ping loop - delaying")
             time.sleep(5)
             # This function is to determine when the Server is on and when its not on.
             # Ping the system
             if powerstate != 0: # prevent it from waking when sleep
-                pingresult = SysInfo.pinghost()
+                pingresult = SysInfo.pinghost(4)
+            else:
+                pingresult = 0
             #print(powerstate)
             if powerstate == 3:
                 # Shutdown in progress
@@ -2037,7 +2143,7 @@ class SysInfo:
                     powerstate = 3
                 else:
                     logprint("Host System Offline!")
-                    EventLog.eventwrite(f"Host System Offline!")
+                    EventLog.eventwrite(f"System Shutdown complete - Host System Offline!")
                     powerstate = 0
 
             if powerstate == 2:
@@ -2045,13 +2151,13 @@ class SysInfo:
                 if pingresult == 1:
                     powerstate = 1
                     logprint("Host System Online!")
-                    EventLog.eventwrite(f"Host System Online!")
+                    EventLog.eventwrite(f"System Power on complete - Host System Online!")
                 else:
                     powerstate = 2 # System bootup in progress
             if powerstate == 1: # System was on before
                 if pingresult == 0: # Cant reach it
                     logprint("Host System Offline!")
-                    EventLog.eventwrite(f"Host System Offline!")
+                    EventLog.eventwrite(f"Host System Suddenly Offline!")
                     powerstate = 0
             if powerstate == 0: # System was off before
                 if pingresult == 1: # Cant reach it
@@ -2085,21 +2191,77 @@ class SysInfo:
 
 
 class HID:
+    # Virtual Media Controls    
+    def ejectfloppy():
+        os.system('echo "" | sudo tee /sys/kernel/config/usb_gadget/g1/functions/mass_storage.usb0/lun.0/file')
+    # and the computer goes "do do"
+        time.sleep(3)
+        print("Virtual Floppy Disk Ejected")
+
+    def insertfloppy(filepath): #eg: "/usbstick.bin" must include the full path including / at the start
+        print("inserting Virtual Floppy Disk...")
+        os.system(f'echo "{filepath}" | sudo tee /sys/kernel/config/usb_gadget/g1/functions/mass_storage.usb0/lun.0/file')
+    
+    def ejectiso():
+        logprint("Ejecting Virtual ISO Image")
+        os.system('echo "" | sudo tee /sys/kernel/config/usb_gadget/g1/UDC')
+        time.sleep(1)
+        
+    def insertiso():
+        HID.ejectiso()                
+        fullpath = os.path.abspath("eilovmedia.iso")
+        print(f"Inserting ISO: {fullpath}")
+        logprint("Swapping Virtual Disks")
+        os.system(f'echo "{fullpath}" | sudo tee /sys/kernel/config/usb_gadget/g1/functions/mass_storage.usb0/lun.0/file')
+        time.sleep(1)
+        os.system('ls /sys/class/udc | sudo tee /sys/kernel/config/usb_gadget/g1/UDC')
+        logprint("Virtual Disk Swapped")
     # HIDPi
     # This is to be integrated with the HTTP server
-
     # Custom HID Keyboard Driver/API
+    # Note these functions are from HIDPi and are only used for testing purposes
+    def setup():
+        print("Setting up HID Controller...")
+        Mouse.HID_DEVICE = "/dev/hidg3"
+        Keyboard.HID_DEVICE = "/dev/hidg2"
+        print(f"Mouse Device Path: {Mouse.HID_DEVICE}")
+        print(f"Keyboard Device Path: {Keyboard.HID_DEVICE}")
+    
+    def _send_reportkey(report):
+        HID_DEVICE = "/dev/hidg2"
+        with open(HID_DEVICE, "rb+") as fd:
+            fd.write(report)
+    def _send_reportmice(report,hold):
+        HID_DEVICE = "/dev/hidg3"
+        with open(HID_DEVICE, "rb+") as fd:
+            fd.write(report)
+            if hold:
+                time.sleep(hold)
+                fd.write([0]*4)
+                
+    def release_keys():
+        HID._send_reportkey(bytes(8))
+        
+    def send_key(modifiers,*keys,hold):
+        report = [0] * 8
+        report[0] = modifiers
 
+        for i, key in enumerate(keys[:6]):
+            report[2 + i] = key
+
+        HID._send_reportkey(bytes(report))
+        if hold:
+            time.sleep(hold)
+        HID.release_keys()
+        
     # simple stuff
     def sendtext(text): # RDPWeb Style "Send text to remote machine"
         Keyboard.send_text(text, delay=0.25)
         logprint(f"Keyboard sent: {text}")
-
     # BEGIN SHOUTY CAPS VARIABLES!!!!!!!!!!!!!!! (SCREAM WHEN YOU READ THIS COMMENT xdd)
     KEY_DELETE = 0x4c
     KEY_WIN = 0x5b # left
     KEY_SUPER = 0x5b # left
-    
     # Expanded keyboard_keys Maps
     KEY_MAPPINGS_SPECIAL = {
         # delete
@@ -2170,10 +2332,10 @@ class HID:
         else:
             modifier = 0
         key = HID.keytokey(keytext)
-        Keyboard.send_key(modifier, key, hold=0) # send_key(controlkeys, *keys, hold=0)
+        HID.send_key(modifier, key, hold=0) # send_key(controlkeys, *keys, hold=0)
         logprint("sendkeytext(): Keys sent!")
         if hasmod:
-            Keyboard.release_keys()
+            HID.release_keys()
             
     # Custom HID Mouse Driver/API
     # Note that the mouse doesnt work in Windows.
@@ -2183,20 +2345,28 @@ class HID:
     def click(report,hold):
         logprint("click!")
         logprint(str(report))
-        Mouse._send_report(report,hold)
+        HID._send_reportmice(report,hold)
     #Mouse._send_report(bytes([button, 0, 0, 0]), hold)
     # "\x0\x{X-axis}\x{y-axis}\x0" 
     def movemouse(x,y):
         # Usefull info: https://github.com/pelya/android-keyboard-gadget/issues/135
         logprint("HID Moving mouse: "+str(x)+" "+str(y))
-        signedx = x - 256 if x > 127 else x
-        signedy = y - 256 if y > 127 else y
-        print("signedx: "+str(signedx))
-        print("signedy: "+str(signedy))
+        val = np.int8(-50)
+        signedx = int(np.int8(x))
+        #signedx = signedx.to_bytes(1,byteorder='big',signed=True)
+        signedy = int(np.int8(y))
+        #signedy = signedy.to_bytes(1,byteorder='big',signed=True)
+        #print("signedx: "+str(signedx))
+        #print("signedy: "+str(signedy))
         # note: no scroll wheel here
-        report = bytes([0x00, signedx, signedy, 0x00])
-        print(str(report))
-        Mouse._send_report(report,0)
+        #report = bytes([0x00, signedx, signedy, 0x00])
+        report = []
+        report.append(0)
+        report.append(signedx)
+        report.append(signedy)
+        report.append(0)
+        bytedata = struct.pack(f"{len(report)}b", *report)
+        HID._send_reportmice(bytedata,0)
 
     def clickmouse(ae,dn=1):
         # LEFT = 1
@@ -2253,7 +2423,24 @@ class HID:
 
 # Now Main Code (NMC)
 # Live Console Session
-
+HID.setup()
+print("Scanning for IRC Capture devices...")
+pygame.init()
+pygame.camera.init()
+cam_list = pygame.camera.list_cameras()
+if not cam_list:
+    print("No capture cards found!")
+    cam = "ae"
+    
+else:
+    try:
+        RESOLUTION = (1920, 1080)
+        cam = pygame.camera.Camera(cam_list[0], RESOLUTION)
+        cam.start()
+        IRCENABLED = 1
+        print("Found and mounted a capture card to use with iRC")
+    except:
+        print("Could not attach a capture card")
 printlog(f"{computername} | New EiLO Console Session Initiated")
 phnyautostartThread = threading.Thread(target=phnyautostart, args=())
 phnyautostartThread.start()
