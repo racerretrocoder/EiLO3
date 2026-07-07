@@ -10,7 +10,7 @@
 # If you ever want to try this software out, Or if you need help setting it up. Ask me, id love to help
 
 # Regular imports
-print("BTW EiLO3 must be able to run commands with SUDO! As it requres extra permissions to control the Virtual USB drive")
+print("BTW EiLO3 must be ran with SUDO! As it requres extra permissions to control the Virtual USB drive")
 import serial, os, requests, sys, time, socket, threading, datetime, platform, subprocess, hashlib, math, cv2, pickle, struct, pygame, pygame.camera, io, cgi
 # from's
 from zlib import compress
@@ -1004,11 +1004,14 @@ class HostCommunication: # Communication with the server
         else:
             # Screenshot from IRC
             global cam
+            cam.start()
+            time.sleep(0.5)
             img = cam.get_image()
             pygame.time.wait(100)
             img = cam.get_image()
             pygame.image.save(img, "clientscreenshot.png")
             logprint("getscr(): Get screenshot from IRC")
+            cam.stop()
             return 1
 
     def oembdi_ping(ipaddr):
@@ -1073,6 +1076,7 @@ class IRC:
         global cam
         global cam_list
         global powerstate
+        cam.start()
         oldreso = (800, 600)
         # The region to capture
         try:
@@ -1086,6 +1090,7 @@ class IRC:
                 #print("Client ping rec")
                 if data == "end":
                     logprint("IRC VIDEO: The Client has requested to gracefully exit...")
+                    cam.stop()
                     raise Exception
                 if reso[0] < 1000:
                     width = "0" + str(reso[0])
@@ -1105,6 +1110,10 @@ class IRC:
                 conn.sendall(header + image_bytes)
         except Exception as aeaeae:
             print("IRC Video: Client disconnected! / Exited " + str(aeaeae))
+            try:
+                cam.stop()
+            except:
+                ae = 1
             #conn.close() # end the irc sesh
             #sock.close() # end the irc sesh
 
@@ -2277,6 +2286,7 @@ class HID:
         'super': 0x5b, # there the same, use for "compatiblity"
         'win': 0x5b,     # there the same, use for "compatiblity"
         # function row
+        'space': KEY_SPACE,
         'esc': KEY_ESC, 
         'f1': KEY_F1,
         'f2': KEY_F2, 
@@ -2288,6 +2298,10 @@ class HID:
         'f8': KEY_F8, 
         'f9': KEY_F9, 
         'f10': KEY_F10, 
+        'up' : KEY_UP,
+        'dn' : KEY_DOWN,
+        'lt' : KEY_LEFT,
+        'rt' : KEY_RIGHT,
         'f11': KEY_F11, 
         'f12': KEY_F12
     }
@@ -2312,7 +2326,7 @@ class HID:
             # Note that one mod can be sent at a time
             #  Modifier Byte
             bits = [0, 0, 0, 0, 0, 0, 0, 0]
-            # LC, LS, LA, LG, RC, RS, RA, RG
+                #   LC,LS,LA,LG,RC,RS,RA,RG
             # Great ref: https://wiki.osdev.org/USB_Human_Interface_Devices
             hasmod = 1
             for ae in range(len(control)):
@@ -2325,6 +2339,7 @@ class HID:
                 if control[ae] == "win" or control[ae] == "super":
                     bits[3] = 1
             logprint(bits)
+            # todo: Left Ctrl and Left Shift results in 0x01 \(\lor \) 0x02 = 0x03.
             bitstring = "".join(str(x) for x in bits)
             modifier = int(bitstring, 2)
             logprint("Modifier byte:")
@@ -2375,26 +2390,30 @@ class HID:
         # MIDDLE = 4
         # HIDPi Enchancements: TODO: Make click-and-drag?
         # Continous hold untill function called to release the button.
-        mousereport = [0x00, 0x00, 0x00] # button byte, X movement (0-255), Y Movement (0-255)
+        mousereport = [0x00, 0x00, 0x00, 0x00] # button byte, X movement (0-255), Y Movement (0-255)
         buttonbyte = [0, 0, 0, 0, 0, 0, 0, 0] # [0] Left BTN [1] Right BTN [2] Middle button (0 is off 1 is on for all) The rest of the bits are for extra mouse buttons "device-specific features" 
         if dn:
             if ae == 1:
                 logprint("Click left")
                 #Mouse.click(ae, hold=0.1)
                 buttonbyte[0] = 1
+                mousereport = [0x01, 0x00, 0x00, 0x00]
             if ae == 2:
                 logprint("Click right")
                 #Mouse.click(ae, hold=0.1)
                 buttonbyte[1] = 1
+                mousereport = [0x02, 0x00, 0x00, 0x00]
             if ae == 4: 
                 logprint("Click both")
                 #Mouse.click(ae, hold=0.1)
                 buttonbyte[0] = 1
                 buttonbyte[1] = 1
+                mousereport = [0x03, 0x00, 0x00, 0x00]
             if ae == 3:
                 logprint("Click middle")    
                 #Mouse.click(ae, hold=0.1)  
                 buttonbyte[2] = 1
+                mousereport = [0x04, 0x00, 0x00, 0x00]
         else:
             if ae == 1:
                 logprint("Release left")
@@ -2416,7 +2435,7 @@ class HID:
 
         bitstring = "".join(str(x) for x in buttonbyte)
         buttonbytefull = int(bitstring, 2)
-        mousereport[0] = buttonbytefull
+        #mousereport[0] = buttonbytefull
         # click it
         HID.click(bytes(mousereport),0)
 
@@ -2434,9 +2453,8 @@ if not cam_list:
     
 else:
     try:
-        RESOLUTION = (1920, 1080)
+        RESOLUTION = (800, 600)
         cam = pygame.camera.Camera(cam_list[0], RESOLUTION)
-        cam.start()
         IRCENABLED = 1
         print("Found and mounted a capture card to use with iRC")
     except:
