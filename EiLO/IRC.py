@@ -1,14 +1,51 @@
-import socket, os, time, subprocess, requests, sys, mouse, random, pygame, pyautogui, string, requests
+import socket, os, time, subprocess, requests, sys, mouse, random, pygame, pyautogui, string, requests, cv2, pickle, struct
+import numpy as np
 from getpass import getpass
 from zlib import decompress
 from threading import Thread
 host = ""
+
+mousecaptured = 1
 
 # Keyboard Driver
 from pynput.keyboard import Key , Listener , Controller
 keyboard = Controller()
 mods = []
 inputrunning = 0
+screenmode = 0
+class keys:
+    KEY_UP = Key.up
+    KEY_DOWN = Key.down
+    KEY_LEFT = Key.left
+    KEY_RIGHT = Key.right
+    #'a': KEY_A, 'b': KEY_B, 
+    keymaps = {
+        Key.f1 : 'f1',
+        Key.f2 : 'f2',
+        Key.f3 : 'f3',
+        Key.f4 : 'f4',
+        Key.f5 : 'f5',
+        Key.f6 : 'f6',
+        Key.f7 : 'f7',
+        Key.f8 : 'f8',
+        Key.f9 : 'f9',
+        Key.f10 : 'f1',
+        Key.f11 : 'f12',
+        Key.f12 : 'f12',
+        Key.delete: 'del',
+        Key.enter: 'enter',   
+        Key.space: 'space', 
+        Key.backspace: 'backspace',
+        Key.esc: 'esc',
+        Key.up: 'up',
+        Key.down: 'dn',
+        Key.left: 'lt',
+        Key.right: 'rt',
+        Key.tab: 'tab',
+    }
+
+
+
 def on_press(key):
     global inputexit
     if inputexit == 1:
@@ -21,7 +58,11 @@ def on_press(key):
     try:
         keystr = key.char
     except AttributeError:
-        ae = 0
+        try:
+            keystr = keys.keymaps[key]
+        except:
+            print("Keymaps didnt work")
+
     ae = 0
     global mods
     if key == Key.ctrl_l or key == Key.ctrl_r:
@@ -55,7 +96,8 @@ def on_press(key):
 
     if keystr != "":
         print("Sending key: "+str(keystr))
-        thestring = host+"/keyboard?"
+        global host
+        thestring = host + "/keyboard?"
         if mods == []:
             thestring = thestring + "n"
         else:
@@ -77,6 +119,26 @@ def on_release(key):
         return False
     ae = 0
 
+inputexit = 0
+
+keytest = 0
+if keytest == 1:
+    with Listener(on_press=on_press , on_release=on_release) as listener:
+        listener.join()
+        while True:
+            time.sleep(1)
+            if inputexit == 1:
+                try:
+                    listener.stop()
+                    print("Keyboard Disconnected")
+                    break
+                except:
+                    try:
+                        Listener.stop()
+                    except:
+                        print("Couldnt disconnect keyboard")
+
+
 
 
 
@@ -90,17 +152,17 @@ HEIGHT = 0
 hei, wid = pyautogui.size()
 
 
-inputexit = 0
 
 
-def recvall(conn, length):
-    buf = b''
-    while len(buf) < length:
-        data = conn.recv(length - len(buf))
-        if not data:
-            return data
-        buf += data
-    return buf
+def recv_all(sock, num_bytes):
+    data = b""
+    while len(data) < num_bytes:
+        packet = sock.recv(num_bytes - len(data))
+        if not packet:
+            return None
+        data += packet
+    return data
+
 
 
 
@@ -109,18 +171,25 @@ def kpress(key):
 def kreles(key):
     print(f"key up: {key}")
 
-def inputmousethread(host,port):
+
+def inputmousethread(hostae,port):
     try:
-        time.sleep(4) # let da server startu
+        time.sleep(4) # let da server startup
         print("Mouse Connected!")
         global HEIGHT
         global WIDTH
+        global mousecaptured
         oldstring = ""
         global event
         global inputexit
+        global host
         keylist = []
         buffer = []
         allowed = string.ascii_letters
+        xlast = 0
+        ylast = 0
+        xmouse = 0
+        ymouse = 0
         while 1==1:
             if inputexit == 1:
                 print("Disconnecting Mouse...")
@@ -131,6 +200,7 @@ def inputmousethread(host,port):
                     pygame.quit()
             eventae=pygame.event.poll()
             mousepos = pygame.mouse.get_pos()
+            
             #print("got mouse pos")
             #print(buffer)
             if pygame.mouse.get_pressed()[0]:
@@ -150,19 +220,57 @@ def inputmousethread(host,port):
             ratio_y = (WIDTH / h) # mouse import is also revesred. This works perfectly
             #print("ratio: ",(ratio_x,ratio_y))
             scaledmouse = (mousepos[0] * ratio_x, mousepos[1] * ratio_y)
+            xmouse = scaledmouse[0]
+            ymouse = scaledmouse[1]
+            if mousecaptured == 1:
+                # mouse is controling
+                # get distance
+                if xlast == xmouse:
+                    xdist = 0
+                if ylast == ymouse:
+                    ydist = 0
+                if xlast < xmouse:
+                    # mouse inc in x axis
+                    xdist = xmouse - xlast
+                    xlast = xmouse
+                if xlast > xmouse:
+                    # mouse dec in x axis
+                    xdist = xlast - xmouse
+                    xlast = xmouse
+                    xdist = xdist * -1
+                if ylast < ymouse:
+                    # mouse inc in y axis
+                    ydist = ymouse - ylast
+                    ylast = ymouse
+                if ylast > ymouse:
+                    # mouse dec in y axis
+                    ydist = ylast - ymouse
+                    #ydist = ydist
+                    ylast = ymouse
+                    ydist = ydist * -1
+
+                #print("xdist")
+                #print(xdist)
+                #print("ydist")
+                #print(ydist)
+                xlast = xmouse
+                ylast = ymouse
             #print("scaledmouse: ",scaledmouse)
-            inputstring = f"{int(scaledmouse[0])}|eilo|{int(scaledmouse[1])}|eilo|{mouseclick}".encode('utf-8')
-            inputmouse = [int(scaledmouse[0]), int(scaledmouse[1]), f"{mouseclick}".encode('utf-8')] # inp list
-            #print("got input string... sending!")
-            #print(inputstring)
+            inputstring = f"/mouse?{int(xdist)}&{int(ydist)}"
             if inputstring != oldstring:
                 #mouseinput(inputmouse)
                 oldstring = inputstring
-    except:
+                # send le mouse control
+            try:
+                requests.get(f"{host}{inputstring}")
+            except:
+                ae = 0
+    except Exception as eee:
         print("Mouse Disconnected")
+        print(str(eee))
 
 
-def inputkeythread(host,port):
+def inputkeythread(hostae,port):
     time.sleep(2.3) # let da server startu
     print("Keyboard Connected!")
     global HEIGHT
@@ -186,7 +294,7 @@ def inputkeythread(host,port):
             if inputexit == 1:
                 try:
                     listener.stop()
-                    print("Keyboard Disconnected")
+                    print("Keyboard Disconnected!")
                     break
                 except:
                     try:
@@ -210,12 +318,28 @@ def ircvideo(sock):
         pygame.init()
         screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE)
         clock = pygame.time.Clock()
+        pygame.display.set_caption("EiLO3 Integrated Remote Console")
         inputrunning = 0
         inputexit = 0
         watching = True    
+        data = b""
+        payload_size = struct.calcsize("L")
+        oldw = 640
+        oldh = 480
         while watching:
             # send a single byte
             sock.send(b'\x00')
+            width = sock.recv(4)
+            height = sock.recv(4)
+            #print(str(width))
+            #print(str(height))
+            height = int(height)
+            width = int(width)
+            if oldw != width:
+                screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+                oldw = width
+                oldh = height
+                print("Force resized the window")
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     watching = False
@@ -228,28 +352,62 @@ def ircvideo(sock):
                 keythread = Thread(target=inputkeythread, args=(host,port,))
                 keythread.start()
                 inputrunning = 1
-            size_len = int.from_bytes(sock.recv(1), byteorder='big')
-            size = int.from_bytes(sock.recv(size_len), byteorder='big')
-            pixels = decompress(recvall(sock, size))
-            img = pygame.image.fromstring(pixels, (HEIGHT, WIDTH), 'RGB')
+                    #print("getting size len")
+                    #size_len = int.from_bytes(sock.recv(1), byteorder='big')
+                    #print(size_len)
+                    #print("getting pixels")
+                    #size = int.from_bytes(sock.recv(size_len), byteorder='big')
+                    #print(size)
+                    #print("Decompressing...")
+                    #pixels = decompress(recvall(sock, size))
+                    #print("Decompressed!")
+                    #frame_rgb = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
+                    #frame_transposed = cv2.transpose(frame_rgb)
+                    #img = pygame.image.fromstring(pixels, (HEIGHT, WIDTH), 'RGB')
+                        #while len(data) < payload_size:
+                        #    packet = sock.recv(4096)
+                        #    if not packet: sys.exit()
+                        #    data += packet
+                        #packed_msg_size = data[:payload_size]
+                        #data = data[payload_size:]
+                        #msg_size = struct.unpack("L", packed_msg_size)[0]
+                        #while len(data) < msg_size:
+                        #    data += sock.recv(4096)
+                        #frame_data = data[:msg_size]
+                        #data = data[msg_size:]
+                        #frame = pickle.loads(frame_data)
+                        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        ##frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                        #frame_surface = pygame.surfarray.make_surface(frame)
+            header = recv_all(sock, 4)
+            if header:
+                image_size = struct.unpack("!I", header)[0]
+                #print(f"Expecting image payload of {str(image_size)} bytes...")
+            image_bytes = recv_all(sock, image_size)
+            RESOLUTION = (width, height)
+            if image_bytes:
+                #print("Image transmission appearntly complete")
+                image_bytes = decompress(image_bytes)
+                try:
+                    img = pygame.image.frombytes(image_bytes, RESOLUTION, "RGB")
+                except:
+                    img = pygame.image.fromstring(image_bytes, RESOLUTION, "RGB")
             w, h = pygame.display.get_surface().get_size()
             DEFAULT_IMAGE_SIZE = (w,h) # these are inverted.
             img = pygame.transform.scale(img, DEFAULT_IMAGE_SIZE)
-            # display it 
             screen.blit(img, (0, 0))
             pygame.display.flip()
-            #pygame.display.update()
             clock.tick(60)
-    finally:
-        #sock.close()
-        print("Please wait, Closing IRC")
+    except Exception as ae:
+        print("Please wait, Closing IRC err: " + str(ae))
         print("Disconnecting Input.")
-        #Listener.stop() # stop keyboard
         sock.send("end".encode('utf-8'))
         inputexit = 1
         print("Press any key to return to the terminal")
         time.sleep(1)
         pygame.quit()
+        inputexit = 1
+        inputrunning = 0
         
 
 
@@ -419,8 +577,10 @@ def client_program():
                 print("IRC: Ready!")
                 ircvideo(client_socket)
                 fromclient = "end"
-
+                client_socket.send(fromclient.encode('utf-8'))
                 time.sleep(5)
+                print("IRC: Quit")
+                pygame.quit()
 
                 
 
