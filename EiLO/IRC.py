@@ -4,7 +4,7 @@ from getpass import getpass
 from zlib import decompress
 from threading import Thread
 host = ""
-
+name = ""
 mousecaptured = 1
 
 # Keyboard Driver
@@ -29,7 +29,7 @@ class keys:
         Key.f7 : 'f7',
         Key.f8 : 'f8',
         Key.f9 : 'f9',
-        Key.f10 : 'f1',
+        Key.f10 : 'f10',
         Key.f11 : 'f12',
         Key.f12 : 'f12',
         Key.delete: 'del',
@@ -54,7 +54,7 @@ def on_press(key):
     keystr = ""
     if key == Key.delete:
         keystr = "del"
-    print(key)
+    #print(key)
     try:
         keystr = key.char
     except AttributeError:
@@ -96,6 +96,8 @@ def on_press(key):
 
     if keystr != "":
         print("Sending key: "+str(keystr))
+        if keystr == " ":
+            keystr = "space"
         global host
         thestring = host + "/keyboard?"
         if mods == []:
@@ -108,8 +110,11 @@ def on_press(key):
                 if i != len(mods) - 1:
                     thestring = thestring + "&"
         thestring = thestring + "?" + str(keystr)
-        print(thestring)
-        requests.get(thestring)
+        #print(thestring)
+        try:
+            requests.get(thestring)
+        except:
+            aeae = 1
 
 
 def on_release(key):
@@ -171,6 +176,13 @@ def kpress(key):
 def kreles(key):
     print(f"key up: {key}")
 
+def click(click):
+    global host
+    inputstring = f"/mouseclick?{click}"
+    try:
+        requests.get(f"{host}{inputstring}")
+    except:
+        aeae = 0
 
 def inputmousethread(hostae,port):
     try:
@@ -186,10 +198,14 @@ def inputmousethread(hostae,port):
         keylist = []
         buffer = []
         allowed = string.ascii_letters
+        xdistlast = 0
+        ydistlast = 0 # This prevents http spam
         xlast = 0
         ylast = 0
         xmouse = 0
         ymouse = 0
+        zerosent = 1
+        oldclick = 0
         while 1==1:
             if inputexit == 1:
                 print("Disconnecting Mouse...")
@@ -212,6 +228,10 @@ def inputmousethread(hostae,port):
             if pygame.mouse.get_pressed() [2]:
                 #print("click 3!")
                 mouseclick = 3
+
+            if mouseclick != 0 and oldclick != mouseclick:
+                click(mouseclick)
+            oldclick = mouseclick
             #print("clicks determined")
             w, h = pygame.display.get_surface().get_size()
             #print("got surface")
@@ -248,11 +268,6 @@ def inputmousethread(hostae,port):
                     #ydist = ydist
                     ylast = ymouse
                     ydist = ydist * -1
-
-                #print("xdist")
-                #print(xdist)
-                #print("ydist")
-                #print(ydist)
                 xlast = xmouse
                 ylast = ymouse
             #print("scaledmouse: ",scaledmouse)
@@ -262,9 +277,22 @@ def inputmousethread(hostae,port):
                 oldstring = inputstring
                 # send le mouse control
             try:
-                requests.get(f"{host}{inputstring}")
+                if xdistlast == 0 and xdist == 0 and ydist == 0 and ydistlast == 0:
+                    if zerosent == 0:
+                        requests.get(f"{host}{inputstring}")
+                        zerosent = 1
+                else:
+                    # mouse is movie groovie
+                    requests.get(f"{host}{inputstring}")
+                    #print("xdist")
+                    #print(xdist)
+                    #print("ydist")
+                    #print(ydist)
+                    zerosent = 0
             except:
                 ae = 0
+            xdistlast = xdist
+            ydistlast = ydist
     except Exception as eee:
         print("Mouse Disconnected")
         print(str(eee))
@@ -302,6 +330,11 @@ def inputkeythread(hostae,port):
                     except:
                         print("Couldnt disconnect keyboard")
 
+def safe_thread():
+    while True:
+        time.sleep(0.1)
+        pygame.event.pump()
+
 
 # IRC Video
 def ircvideo(sock):
@@ -311,6 +344,7 @@ def ircvideo(sock):
     global hei
     global inputexit
     global inputrunning
+    global name
     print("IRC Version 1.0")
     print("To end your IRC session, Simply close the window.")
     try:
@@ -318,7 +352,7 @@ def ircvideo(sock):
         pygame.init()
         screen = pygame.display.set_mode((640, 480), pygame.RESIZABLE)
         clock = pygame.time.Clock()
-        pygame.display.set_caption("EiLO3 Integrated Remote Console")
+        pygame.display.set_caption(f"EiLO3 Integrated Remote Console")
         inputrunning = 0
         inputexit = 0
         watching = True    
@@ -326,24 +360,9 @@ def ircvideo(sock):
         payload_size = struct.calcsize("L")
         oldw = 640
         oldh = 480
+        init = 1
+        prev_frame = None
         while watching:
-            # send a single byte
-            sock.send(b'\x00')
-            width = sock.recv(4)
-            height = sock.recv(4)
-            #print(str(width))
-            #print(str(height))
-            height = int(height)
-            width = int(width)
-            if oldw != width:
-                screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-                oldw = width
-                oldh = height
-                print("Force resized the window")
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    watching = False
-                    break
             if inputrunning == 0:
                 # start the input thread
                 print("Initalizing the Input...")
@@ -351,53 +370,97 @@ def ircvideo(sock):
                 mousethread.start()
                 keythread = Thread(target=inputkeythread, args=(host,port,))
                 keythread.start()
+                #safe = Thread(target=safe_thread, args=())
+                #safe.start()
                 inputrunning = 1
-                    #print("getting size len")
-                    #size_len = int.from_bytes(sock.recv(1), byteorder='big')
-                    #print(size_len)
-                    #print("getting pixels")
-                    #size = int.from_bytes(sock.recv(size_len), byteorder='big')
-                    #print(size)
-                    #print("Decompressing...")
-                    #pixels = decompress(recvall(sock, size))
-                    #print("Decompressed!")
-                    #frame_rgb = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
-                    #frame_transposed = cv2.transpose(frame_rgb)
-                    #img = pygame.image.fromstring(pixels, (HEIGHT, WIDTH), 'RGB')
-                        #while len(data) < payload_size:
-                        #    packet = sock.recv(4096)
-                        #    if not packet: sys.exit()
-                        #    data += packet
-                        #packed_msg_size = data[:payload_size]
-                        #data = data[payload_size:]
-                        #msg_size = struct.unpack("L", packed_msg_size)[0]
-                        #while len(data) < msg_size:
-                        #    data += sock.recv(4096)
-                        #frame_data = data[:msg_size]
-                        #data = data[msg_size:]
-                        #frame = pickle.loads(frame_data)
-                        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        ##frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                        #frame_surface = pygame.surfarray.make_surface(frame)
-            header = recv_all(sock, 4)
-            if header:
-                image_size = struct.unpack("!I", header)[0]
-                #print(f"Expecting image payload of {str(image_size)} bytes...")
-            image_bytes = recv_all(sock, image_size)
-            RESOLUTION = (width, height)
-            if image_bytes:
-                #print("Image transmission appearntly complete")
-                image_bytes = decompress(image_bytes)
-                try:
-                    img = pygame.image.frombytes(image_bytes, RESOLUTION, "RGB")
-                except:
-                    img = pygame.image.fromstring(image_bytes, RESOLUTION, "RGB")
-            w, h = pygame.display.get_surface().get_size()
-            DEFAULT_IMAGE_SIZE = (w,h) # these are inverted.
-            img = pygame.transform.scale(img, DEFAULT_IMAGE_SIZE)
-            screen.blit(img, (0, 0))
-            pygame.display.flip()
-            clock.tick(60)
+
+            # send a single byte
+            if init == 1:
+                msg = "init"
+                sock.send(msg.encode('utf-8'))
+                print("Requested init video")
+                width = sock.recv(4)
+                height = sock.recv(4)
+                print(f"Got init details: w: {width} h: {height}")
+                height = int(height)
+                width = int(width)
+                if oldw != width:
+                    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+                    oldw = width
+                    oldh = height
+                    print("Force resized the window")
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        watching = False
+                        break
+                header = recv_all(sock, 4)
+                if header:
+                    image_size = struct.unpack("!I", header)[0]
+                    print(f"Expecting Init image payload of {str(image_size)} bytes...")
+                image_bytes = recv_all(sock, image_size)
+                RESOLUTION = (width, height)
+                if image_bytes:
+                    print("Image transmission appearntly complete")
+                    image_bytes = decompress(image_bytes)
+                    try:
+                        img = pygame.image.frombytes(image_bytes, RESOLUTION, "RGB")
+                    except:
+                        img = pygame.image.fromstring(image_bytes, RESOLUTION, "RGB")
+                    prev_frame = img
+                    print("Screen surface caputerd and stored in memory!")
+                w, h = pygame.display.get_surface().get_size()
+                DEFAULT_IMAGE_SIZE = (w,h) # these are inverted.
+                img = pygame.transform.scale(img, DEFAULT_IMAGE_SIZE)
+                screen.blit(img, (0, 0))
+                pygame.display.flip()
+                clock.tick(60)
+                init = 0
+                print("Screen initalized, now were just updating")
+            if init == 0:
+                msg = "upda"
+                sock.send(msg.encode('utf-8'))
+                print("Requested upda video")
+                width = sock.recv(4)
+                height = sock.recv(4)
+                wae = sock.recv(4)
+                wpix = sock.recv(4)
+                print(f"Got update details: w: {width} h: {height} size-px: {wae} wpix: {wpix}")
+                height = int(height) # Remote Screen Hscan
+                width = int(width)   # Remote Screen Wscan
+                wae = int(wae)       # Update size
+                wpix = int(wpix)
+                if oldw != width or oldh != height:
+                    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+                    oldw = width
+                    oldh = height
+                    print("Resolution update requested Force resized the window")
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        watching = False
+                        break
+                header = recv_all(sock, 4)
+                if header:
+                    image_size = struct.unpack("!I", header)[0]
+                    print(f"Expecting update image payload of {str(image_size)} bytes...")
+                image_bytes = recv_all(sock, image_size)
+                UPDATE_RESOLUTION = (wae, height)
+                RESOLUTION = (width, height)
+                if image_bytes:
+                    print("update transmission appearntly complete")
+                    image_bytes = decompress(image_bytes)
+                    try:
+                        img = pygame.image.frombytes(image_bytes, UPDATE_RESOLUTION, "RGB")
+                    except:
+                        img = pygame.image.fromstring(image_bytes, UPDATE_RESOLUTION, "RGB")
+                    # Now we blit it on the current frame
+                    prev_frame.blit(img, (wpix, 0))
+                    print("prev frame blit successful")
+                w, h = pygame.display.get_surface().get_size()
+                DEFAULT_IMAGE_SIZE = (w,h) #
+                final = pygame.transform.scale(prev_frame, DEFAULT_IMAGE_SIZE)
+                screen.blit(final, (0, 0))
+                pygame.display.flip()
+                clock.tick(60)
     except Exception as ae:
         print("Please wait, Closing IRC err: " + str(ae))
         print("Disconnecting Input.")
