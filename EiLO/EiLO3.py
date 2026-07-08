@@ -1069,6 +1069,7 @@ class IRC:
         #videothread = threading.Thread(target=IRC.video_loop, args=(conn,sock,))
         #videothread.start()
 
+    # IRC Video Thread
     def video_loop(conn,sock): # sock is only used to close it
         global WIDTH
         global HEIGHT
@@ -1077,13 +1078,26 @@ class IRC:
         global cam_list
         global powerstate
         cam.start()
-        oldreso = (800, 600)
-        # The region to capture
+        # Imaging
         try:
             running = 0
+            pt1x = "0000"
+            pt1y = "0000"
+            prev_frame = None
+            hscan = 0
+            wscan = 0
+            hpixold = 0
+            wpixold = 0
+            xit = 0
+            scanunit = 0
+            sens = 15 # sens, minimum pixels to change for an update
+            wasmotionthere = 0
+            changed = 0
             while True:
+                partialsend = 0
                 reso = cam.get_size()
-
+                wscan = int(reso[0])
+                hscan = int(reso[1])
                 logprint("Cam res: " + str(reso)) 
                 #print("Waiting for client ping...")
                 data = conn.recv(1024).decode() # Get response
@@ -1100,14 +1114,120 @@ class IRC:
                     height = "0" + str(reso[1])
                 else:
                     height = str(reso[1])
-                conn.send(width.encode('utf-8'))
-                conn.send(height.encode('utf-8'))
-                image_surface = cam.get_image()
-                image_bytes = pygame.image.tostring(image_surface, "RGB")
-                image_bytes = compress(image_bytes,9)
-                data_length = len(image_bytes)
-                header = struct.pack("!I", data_length)
-                conn.sendall(header + image_bytes)
+                # video init check
+                
+                if data == "init":
+                    # i think our client wants the whole screen
+                    conn.send(width.encode('utf-8'))
+                    conn.send(height.encode('utf-8'))
+                    image_surface = cam.get_image()
+                    prev_frame = image_surface
+                    xit = 0
+                if data == "upda":
+                    partialsend = 1
+                    # i think our client has the piucture and now just wants motion updates
+                    # EiLO3 requires atleast 2gb so lets use all of the 2gb
+                    # thus this code will run untill somthin changed on th screen
+                    # iterate and check the grid of surface
+                    # X Axis
+                    # better idea: lets do full x axis sweeps so we dont have to worry about y
+                    surfacetosend = pygame.Surface((10, hscan)) # This is a large vertical image of 10 x screen height
+                    #image_surface = cam.get_image() # lets do an update
+                    while True:
+                        # start: xit = 0
+                        # width grid of 10 pixels
+                        image_surface = cam.get_image() # Refresh our picture
+                        print("Got new screen")
+                        #wpix = xit + 1
+                        wpix = xit * 10
+                        if wpix == wscan: # so if wpix == 1920 for ex
+                            # loop back around
+                            print("wpix at max, looping around! xit = 0")
+                            xit = 0 # important: loop back xit to the start screen
+                            #wpix = xit + 1
+                            wpix = xit * 10
+                            if wasmotionthere == 1:
+                                print("Motion was detected in this frame, refreshing screen")
+                                prev_frame = image_surface # we replace the old comparison
+                                wasmotionthere = 0
+                        
+                        print(f"video_loop() wpix:{str(wpix)} xit: {str(xit)}")
+                        # wpix is increments of the reso in width in units of 10, so 10 pixels, 20 pixels, 30 pixels, xit would be 0, 1, 2, etc
+                        gridscan = pygame.Rect(wpix, 0, 10, hscan) # one long stick
+                        
+                        # the full segment surface
+                        mainsurface = pygame.Surface((10, hscan) ) #, pygame.SRCALPHA
+                        prevsurface = pygame.Surface((10, hscan) ) #, pygame.SRCALPHA
+                        
+                        mainsurface.blit(image_surface, (0, 0), (wpix, 0, 10, hscan))
+                        prevsurface.blit(prev_frame, (0, 0), (wpix, 0, 10, hscan))
+                        diffsurface = pygame.Surface((10, hscan))
+                            # motion stuff
+                        currarr = pygame.PixelArray(mainsurface)
+                        prevarr = pygame.PixelArray(prevsurface)
+                        diffarr = pygame.PixelArray(diffsurface)
+                            # now we sweep the 10 by hscan grid
+                        for x in range(10):
+                                wpix = xit * 10
+                                for y in range(hscan):
+                                    wpix = xit * 10
+                                    print(f"Scanning: X {str(x)} Y {str(y)} Xit {str(xit)} Wpix {str(wpix)}")
+                                    # order the rgb for takeout
+                                    c_rgb = mainsurface.unmap_rgb(currarr[x, y])
+                                    p_rgb = prevsurface.unmap_rgb(prevarr[x, y])
+                                    rd = abs(c_rgb.r - p_rgb.r)
+                                    gd = abs(c_rgb.g - p_rgb.g)
+                                    bd = abs(c_rgb.b - p_rgb.b)
+                                    if (rd + gd + bd) / 3 != 0:
+                                        print(f"Pixel motion modifier: {str((rd + gd + bd) / 3)}")
+                                    #print((rd + gd + bd) / 3)
+                                    if (rd + gd + bd) / 3 > sens: # if #sens pixels out of the total get changed, then flag for an update
+                                        print(f"i smell some motion in segment: {str(wpix)}")
+                                        print(f"xit motion: {str(xit)}")
+                                        wasmotionthere = 1
+                                        # ship the parcel
+                                        changed = 1
+                                        surfacetosend.blit(image_surface, (0, 0), (wpix, 0, 10, hscan)) # basically a 10 x hscan vertical image
+                                        if wpix < 1000:
+                                            if wpix < 100:
+                                                pt1x = "00" + str(wpix)
+                                            else:
+                                                pt1x = "0" + str(wpix)
+                                        else:
+                                            pt1x = str(wpix)
+                                        #conn.send(pt1x.encode('utf-8'))
+                                        
+                                        break
+                        if wpix == wscan:
+                            xit = 0
+                        else:
+                            xit = xit + 1   
+                        break
+                        #del currarr, prevarr, diffarr
+                             
+                                
+                # Encoding and transmisson
+                if partialsend == 1:
+                    print("sending update...")
+                    #time.sleep(1)
+
+                    wae = "0010"
+                    conn.send(width.encode('utf-8'))
+                    conn.send(height.encode('utf-8'))
+                    conn.send(wae.encode('utf-8'))
+                    conn.send(pt1x.encode('utf-8'))
+                    #time.sleep(0.1)
+                    image_bytes = pygame.image.tostring(surfacetosend, "RGB")
+                    image_bytes = compress(image_bytes,9)
+                    data_length = len(image_bytes)
+                    header = struct.pack("!I", data_length)
+                    conn.sendall(header + image_bytes)
+                else:
+                    image_bytes = pygame.image.tostring(image_surface, "RGB")
+                    image_bytes = compress(image_bytes,9)
+                    data_length = len(image_bytes)
+                    header = struct.pack("!I", data_length)
+                    conn.sendall(header + image_bytes)
         except Exception as aeaeae:
             print("IRC Video: Client disconnected! / Exited " + str(aeaeae))
             try:
